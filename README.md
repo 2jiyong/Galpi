@@ -4,6 +4,8 @@
 
 상세한 제품 기획은 [PROJECT_PLAN.md](./PROJECT_PLAN.md)에서 확인할 수 있습니다.
 
+백엔드는 **헥사고날 아키텍처**를 기준으로 개발합니다. 도메인과 유스케이스를 중심에 두고, HTTP와 PostgreSQL/JPA는 어댑터로 분리합니다. 의존성 방향과 현재 코드에서 분리할 부분은 [ARCHITECTURE.md](./ARCHITECTURE.md)에 명시했습니다.
+
 ## 기술 스택
 
 - Backend: Java 25, Spring Boot 4.1.1, Gradle 9.2.1
