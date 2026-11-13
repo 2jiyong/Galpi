@@ -21,6 +21,17 @@ HTTP 요청 → 입력 어댑터 → 입력 포트/유스케이스 → 도메인
 
 ## 현재 상태와 다음 단계
 
-초기 1단계의 `Galpi`, `Phrase` 클래스에는 비즈니스 규칙과 JPA 매핑이 함께 있다. 따라서 현재 코드는 헥사고날 구조로 **전환 중**이며, 위 경계를 모두 만족하는 상태는 아니다.
+도메인과 JPA 분리를 마쳤다. `Galpi`, `Phrase`는 Spring·JPA에 의존하지 않는 순수 도메인 모델이며, ID와 생성·수정 시각을 도메인이 직접 정한다. JPA 엔티티와 도메인 변환은 영속성 어댑터에 있다.
 
-백엔드 CRUD를 구현하기 전에 두 클래스를 순수 도메인 모델로 정리하고, 기존 Flyway 스키마에 대응하는 JPA 엔티티와 변환기를 영속성 어댑터로 분리한다. 이후 유스케이스와 입·출력 포트를 추가하고 REST 컨트롤러를 연결한다. 이때 기존 UUID, 필드 제약, 여러 출처의 순서, 연쇄 삭제 동작은 유지한다.
+기능별 패키지 구조는 다음과 같다.
+
+```text
+com.galpi.<기능>/
+├── domain/                        # 순수 도메인 모델과 규칙
+├── application/port/out/          # 저장소 등 출력 포트 (인터페이스)
+└── adapter/out/persistence/       # JPA 엔티티, Spring Data 리포지토리, 출력 포트 구현
+```
+
+공통 문자열 검증은 `com.galpi.common.domain.TextRules`에 있다. 문장은 갈피를 객체가 아니라 `galpiId`로만 참조하며, 갈피 삭제 시 연쇄 삭제는 DB 외래 키가 처리한다.
+
+다음 단계는 유스케이스(`application/port/in`, `application/service`)와 REST 컨트롤러(`adapter/in/web`)를 추가하는 것이다.
