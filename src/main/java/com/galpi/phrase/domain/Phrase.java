@@ -1,154 +1,91 @@
 package com.galpi.phrase.domain;
 
-import com.galpi.galpi.domain.Galpi;
-import jakarta.persistence.CollectionTable;
-import jakarta.persistence.Column;
-import jakarta.persistence.ElementCollection;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.ForeignKey;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OrderColumn;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
-import jakarta.persistence.Table;
-
+import com.galpi.common.domain.TextRules;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
-@Entity
-@Table(name = "phrases")
-public class Phrase {
+public final class Phrase {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    public static final int CONTENT_MAX_LENGTH = 500;
+    public static final int SOURCE_MAX_LENGTH = 200;
+    public static final int MAX_SOURCES = 10;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "galpi_id", nullable = false, foreignKey = @ForeignKey(name = "fk_phrases_galpi"))
-    private Galpi galpi;
-
-    @Column(nullable = false, length = 500)
+    private final UUID id;
+    private UUID galpiId;
     private String content;
-
-    @ElementCollection
-    @CollectionTable(name = "phrase_sources", joinColumns = @JoinColumn(name = "phrase_id"),
-            foreignKey = @ForeignKey(name = "fk_phrase_sources_phrase"))
-    @OrderColumn(name = "source_order")
-    @Column(name = "source", nullable = false, length = 200)
-    private List<String> sources = new ArrayList<>();
-
-    @Column(nullable = false)
+    private List<String> sources;
     private boolean favorite;
-
-    @Column(name = "display_order", nullable = false)
-    private int displayOrder;
-
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
-
-    @Column(name = "updated_at", nullable = false)
+    private final Instant createdAt;
     private Instant updatedAt;
 
-    protected Phrase() {
+    private Phrase(UUID id, UUID galpiId, String content, List<String> sources, boolean favorite,
+            Instant createdAt, Instant updatedAt) {
+        this.id = Objects.requireNonNull(id, "id is required");
+        this.galpiId = Objects.requireNonNull(galpiId, "galpiId is required");
+        this.content = normalizeContent(content);
+        this.sources = normalizeSources(sources);
+        this.favorite = favorite;
+        this.createdAt = Objects.requireNonNull(createdAt, "createdAt is required");
+        this.updatedAt = Objects.requireNonNull(updatedAt, "updatedAt is required");
     }
 
-    public Phrase(Galpi galpi, String content, List<String> sources, int displayOrder) {
-        this.galpi = Objects.requireNonNull(galpi, "galpi is required");
-        update(content, sources, displayOrder);
+    public static Phrase create(UUID galpiId, String content, List<String> sources, Instant now) {
+        return new Phrase(UUID.randomUUID(), galpiId, content, sources, false, now, now);
     }
 
-    public void update(String content, List<String> sources, int displayOrder) {
-        String normalizedContent = requiredText(content, 500, "content");
+    public static Phrase restore(UUID id, UUID galpiId, String content, List<String> sources, boolean favorite,
+            Instant createdAt, Instant updatedAt) {
+        return new Phrase(id, galpiId, content, sources, favorite, createdAt, updatedAt);
+    }
+
+    public void update(String content, List<String> sources, Instant now) {
+        String normalizedContent = normalizeContent(content);
         List<String> normalizedSources = normalizeSources(sources);
-        requireDisplayOrder(displayOrder);
+        Objects.requireNonNull(now, "now is required");
         this.content = normalizedContent;
-        this.sources.clear();
-        this.sources.addAll(normalizedSources);
-        this.displayOrder = displayOrder;
-        touch();
+        this.sources = normalizedSources;
+        this.updatedAt = now;
     }
 
-    public void replaceSources(List<String> sources) {
-        List<String> normalized = normalizeSources(sources);
-        this.sources.clear();
-        this.sources.addAll(normalized);
-        touch();
+    public void moveTo(UUID galpiId, Instant now) {
+        Objects.requireNonNull(galpiId, "galpiId is required");
+        Objects.requireNonNull(now, "now is required");
+        this.galpiId = galpiId;
+        this.updatedAt = now;
+    }
+
+    public void changeFavorite(boolean favorite, Instant now) {
+        Objects.requireNonNull(now, "now is required");
+        this.favorite = favorite;
+        this.updatedAt = now;
+    }
+
+    private static String normalizeContent(String content) {
+        return TextRules.required(content, CONTENT_MAX_LENGTH, "content");
     }
 
     private static List<String> normalizeSources(List<String> sources) {
         LinkedHashSet<String> normalized = new LinkedHashSet<>();
         if (sources != null) {
             for (String source : sources) {
-                normalized.add(requiredText(source, 200, "source"));
+                normalized.add(TextRules.required(source, SOURCE_MAX_LENGTH, "source"));
             }
         }
-        if (normalized.size() > 10) {
-            throw new IllegalArgumentException("sources must contain at most 10 items");
+        if (normalized.size() > MAX_SOURCES) {
+            throw new IllegalArgumentException("sources must contain at most " + MAX_SOURCES + " items");
         }
         return List.copyOf(normalized);
-    }
-
-    public void setFavorite(boolean favorite) {
-        this.favorite = favorite;
-        touch();
-    }
-
-    public void setDisplayOrder(int displayOrder) {
-        requireDisplayOrder(displayOrder);
-        this.displayOrder = displayOrder;
-        touch();
-    }
-
-    private static void requireDisplayOrder(int displayOrder) {
-        if (displayOrder < 0) {
-            throw new IllegalArgumentException("displayOrder must be non-negative");
-        }
-    }
-
-    @PrePersist
-    void onCreate() {
-        Instant now = Instant.now();
-        createdAt = now;
-        updatedAt = now;
-    }
-
-    @PreUpdate
-    void onUpdate() {
-        touch();
-    }
-
-    private void touch() {
-        if (createdAt != null) {
-            updatedAt = Instant.now();
-        }
-    }
-
-    private static String requiredText(String value, int maxLength, String field) {
-        if (value == null) {
-            throw new IllegalArgumentException(field + " must contain 1 to " + maxLength + " characters");
-        }
-        String normalized = value.trim();
-        if (normalized.isEmpty() || normalized.length() > maxLength) {
-            throw new IllegalArgumentException(field + " must contain 1 to " + maxLength + " characters");
-        }
-        return normalized;
     }
 
     public UUID getId() {
         return id;
     }
 
-    public Galpi getGalpi() {
-        return galpi;
+    public UUID getGalpiId() {
+        return galpiId;
     }
 
     public String getContent() {
@@ -156,15 +93,11 @@ public class Phrase {
     }
 
     public List<String> getSources() {
-        return List.copyOf(sources);
+        return sources;
     }
 
     public boolean isFavorite() {
         return favorite;
-    }
-
-    public int getDisplayOrder() {
-        return displayOrder;
     }
 
     public Instant getCreatedAt() {

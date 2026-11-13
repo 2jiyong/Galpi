@@ -1,107 +1,69 @@
 package com.galpi.galpi.domain;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
-import jakarta.persistence.Table;
-
+import com.galpi.common.domain.TextRules;
 import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
 
-@Entity
-@Table(name = "galpis")
-public class Galpi {
+public final class Galpi {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    public static final int TITLE_MAX_LENGTH = 50;
+    public static final int DESCRIPTION_MAX_LENGTH = 200;
 
-    @Column(nullable = false, length = 50)
+    private final UUID id;
     private String title;
-
-    @Column(length = 200)
     private String description;
-
-    @Column(name = "display_order", nullable = false)
-    private int displayOrder;
-
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
-
-    @Column(name = "updated_at", nullable = false)
+    private PhraseSort phraseSort;
+    private Instant lastViewedAt;
+    private final Instant createdAt;
     private Instant updatedAt;
 
-    protected Galpi() {
+    private Galpi(UUID id, String title, String description, PhraseSort phraseSort, Instant lastViewedAt,
+            Instant createdAt, Instant updatedAt) {
+        this.id = Objects.requireNonNull(id, "id is required");
+        this.title = normalizeTitle(title);
+        this.description = normalizeDescription(description);
+        this.phraseSort = Objects.requireNonNull(phraseSort, "phraseSort is required");
+        this.lastViewedAt = lastViewedAt;
+        this.createdAt = Objects.requireNonNull(createdAt, "createdAt is required");
+        this.updatedAt = Objects.requireNonNull(updatedAt, "updatedAt is required");
     }
 
-    public Galpi(String title, String description, int displayOrder) {
-        update(title, description, displayOrder);
+    public static Galpi create(String title, String description, Instant now) {
+        return new Galpi(UUID.randomUUID(), title, description, PhraseSort.OLDEST, null, now, now);
     }
 
-    public void update(String title, String description, int displayOrder) {
-        String normalizedTitle = requiredText(title, 50, "title");
-        String normalizedDescription = optionalText(description, 200, "description");
-        requireDisplayOrder(displayOrder);
+    public static Galpi restore(UUID id, String title, String description, PhraseSort phraseSort,
+            Instant lastViewedAt, Instant createdAt, Instant updatedAt) {
+        return new Galpi(id, title, description, phraseSort, lastViewedAt, createdAt, updatedAt);
+    }
+
+    public void update(String title, String description, Instant now) {
+        String normalizedTitle = normalizeTitle(title);
+        String normalizedDescription = normalizeDescription(description);
+        Objects.requireNonNull(now, "now is required");
         this.title = normalizedTitle;
         this.description = normalizedDescription;
-        this.displayOrder = displayOrder;
-        touch();
+        this.updatedAt = now;
     }
 
-    public void setDisplayOrder(int displayOrder) {
-        requireDisplayOrder(displayOrder);
-        this.displayOrder = displayOrder;
-        touch();
+    public void changePhraseSort(PhraseSort phraseSort, Instant now) {
+        Objects.requireNonNull(phraseSort, "phraseSort is required");
+        Objects.requireNonNull(now, "now is required");
+        this.phraseSort = phraseSort;
+        this.updatedAt = now;
     }
 
-    private static void requireDisplayOrder(int displayOrder) {
-        if (displayOrder < 0) {
-            throw new IllegalArgumentException("displayOrder must be non-negative");
-        }
+    public void markViewed(Instant now) {
+        this.lastViewedAt = Objects.requireNonNull(now, "now is required");
     }
 
-    @PrePersist
-    void onCreate() {
-        Instant now = Instant.now();
-        createdAt = now;
-        updatedAt = now;
+    private static String normalizeTitle(String title) {
+        return TextRules.required(title, TITLE_MAX_LENGTH, "title");
     }
 
-    @PreUpdate
-    void onUpdate() {
-        touch();
-    }
-
-    private void touch() {
-        if (createdAt != null) {
-            updatedAt = Instant.now();
-        }
-    }
-
-    static String requiredText(String value, int maxLength, String field) {
-        if (value == null) {
-            throw new IllegalArgumentException(field + " must contain 1 to " + maxLength + " characters");
-        }
-        String normalized = value.trim();
-        if (normalized.isEmpty() || normalized.length() > maxLength) {
-            throw new IllegalArgumentException(field + " must contain 1 to " + maxLength + " characters");
-        }
-        return normalized;
-    }
-
-    static String optionalText(String value, int maxLength, String field) {
-        if (value == null || value.trim().isEmpty()) {
-            return null;
-        }
-        String normalized = value.trim();
-        if (normalized.length() > maxLength) {
-            throw new IllegalArgumentException(field + " must contain at most " + maxLength + " characters");
-        }
-        return normalized;
+    private static String normalizeDescription(String description) {
+        return TextRules.optional(description, DESCRIPTION_MAX_LENGTH, "description");
     }
 
     public UUID getId() {
@@ -116,8 +78,12 @@ public class Galpi {
         return description;
     }
 
-    public int getDisplayOrder() {
-        return displayOrder;
+    public PhraseSort getPhraseSort() {
+        return phraseSort;
+    }
+
+    public Instant getLastViewedAt() {
+        return lastViewedAt;
     }
 
     public Instant getCreatedAt() {
