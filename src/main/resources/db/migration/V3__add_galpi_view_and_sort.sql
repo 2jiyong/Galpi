@@ -1,0 +1,3 @@
+ALTER TABLE galpis ADD COLUMN last_viewed_at TIMESTAMP WITH TIME ZONE;
+ALTER TABLE galpis ADD COLUMN phrase_sort VARCHAR(10) NOT NULL DEFAULT 'OLDEST'
+    CONSTRAINT ck_galpis_phrase_sort CHECK (phrase_sort IN ('OLDEST', 'NEWEST'));
