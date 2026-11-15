@@ -71,6 +71,56 @@ class GalpiPersistenceAdapterTest extends PostgresIntegrationTest {
     }
 
     @Test
+    void findAllOrdersByCreatedAt() {
+        repository.save(Galpi.create("나중", null, T1));
+        repository.save(Galpi.create("먼저", null, T0));
+
+        assertThat(repository.findAllOrderByCreatedAt())
+                .extracting(Galpi::getTitle)
+                .containsExactly("먼저", "나중");
+    }
+
+    @Test
+    void countsPhrasesPerGalpi() {
+        Galpi galpiA = repository.save(Galpi.create("A", null, T0));
+        Galpi galpiB = repository.save(Galpi.create("B", null, T0));
+        insertPhrase(galpiA.getId());
+        insertPhrase(galpiA.getId());
+
+        assertThat(repository.countPhrasesByGalpiId()).containsExactly(Map.entry(galpiA.getId(), 2L));
+        assertThat(repository.countPhrases(galpiA.getId())).isEqualTo(2);
+        assertThat(repository.countPhrases(galpiB.getId())).isZero();
+    }
+
+    @Test
+    void deleteByIdReportsWhetherRowExisted() {
+        Galpi galpi = repository.save(Galpi.create("공부", null, T0));
+
+        assertThat(repository.deleteById(galpi.getId())).isTrue();
+        assertThat(repository.findById(galpi.getId())).isEmpty();
+        assertThat(repository.deleteById(UUID.randomUUID())).isFalse();
+    }
+
+    @Test
+    void updateLastViewedAtTouchesOnlyThatColumn() {
+        Galpi galpi = repository.save(Galpi.create("공부", null, T0));
+        jdbc.update("UPDATE galpis SET title = '다른 기기에서 수정' WHERE id = ?", galpi.getId());
+
+        assertThat(repository.updateLastViewedAt(galpi.getId(), T1)).isTrue();
+
+        Galpi found = repository.findById(galpi.getId()).orElseThrow();
+        assertThat(found.getLastViewedAt()).isEqualTo(T1);
+        assertThat(found.getTitle()).isEqualTo("다른 기기에서 수정");
+        assertThat(found.getUpdatedAt()).isEqualTo(T0);
+        assertThat(repository.updateLastViewedAt(UUID.randomUUID(), T1)).isFalse();
+    }
+
+    private void insertPhrase(UUID galpiId) {
+        jdbc.update("INSERT INTO phrases (id, galpi_id, content, created_at, updated_at) "
+                + "VALUES (?, ?, '문장', now(), now())", UUID.randomUUID(), galpiId);
+    }
+
+    @Test
     void databaseRejectsUnknownPhraseSort() {
         assertThatThrownBy(() -> jdbc.update("""
                 INSERT INTO galpis (id, title, phrase_sort, created_at, updated_at)
