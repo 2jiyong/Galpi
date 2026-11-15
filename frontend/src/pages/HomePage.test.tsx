@@ -115,6 +115,22 @@ describe('HomePage', () => {
     expect(screen.getByRole('button', { name: '만들기' })).toBeDisabled()
   })
 
+  it('keepsSheetOpenWhileSaving', async () => {
+    mockFetch({
+      'GET /api/galpis': () => jsonResponse([]),
+      'POST /api/galpis': () => new Promise<Response>(() => {}),
+    })
+
+    renderHome()
+    await userEvent.click(await screen.findByRole('button', { name: '새 갈피' }))
+    await userEvent.type(screen.getByLabelText('제목'), '운동')
+    await userEvent.click(screen.getByRole('button', { name: '만들기' }))
+
+    expect(screen.getByRole('button', { name: '취소' })).toBeDisabled()
+    await userEvent.click(screen.getByRole('button', { name: '닫기' }))
+    expect(screen.getByRole('dialog', { name: '새 갈피' })).toBeInTheDocument()
+  })
+
   it('showsRetryOnLoadFailure', async () => {
     let calls = 0
     mockFetch({

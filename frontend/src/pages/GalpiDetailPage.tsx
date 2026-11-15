@@ -29,6 +29,7 @@ function GalpiDetailPage() {
   const navigate = useNavigate()
   const [state, setState] = useState<LoadState>({ status: 'loading' })
   const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -71,9 +72,20 @@ function GalpiDetailPage() {
   const { galpi } = state
 
   async function handleUpdate(input: GalpiInput) {
-    const updated = await updateGalpi(galpi.id, input)
-    setState({ status: 'loaded', galpi: updated })
-    setEditing(false)
+    setSaving(true)
+    try {
+      const updated = await updateGalpi(galpi.id, input)
+      setState({ status: 'loaded', galpi: updated })
+      setEditing(false)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function closeEdit() {
+    if (!saving) {
+      setEditing(false)
+    }
   }
 
   async function handleDelete() {
@@ -133,12 +145,12 @@ function GalpiDetailPage() {
       </section>
 
       {editing && (
-        <Sheet label="갈피 편집" onClose={() => setEditing(false)}>
+        <Sheet label="갈피 편집" onClose={closeEdit}>
           <GalpiForm
             initial={{ title: galpi.title, description: galpi.description ?? '' }}
             submitLabel="저장"
             onSubmit={handleUpdate}
-            onCancel={() => setEditing(false)}
+            onCancel={closeEdit}
           />
         </Sheet>
       )}

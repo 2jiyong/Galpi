@@ -10,6 +10,7 @@ type LoadState = { status: 'loading' } | { status: 'failed' } | { status: 'loade
 function HomePage() {
   const [state, setState] = useState<LoadState>({ status: 'loading' })
   const [creating, setCreating] = useState(false)
+  const [saving, setSaving] = useState(false)
   const navigate = useNavigate()
 
   const load = useCallback(async () => {
@@ -28,8 +29,20 @@ function HomePage() {
   }, [load])
 
   async function handleCreate(input: GalpiInput) {
-    const created = await createGalpi(input)
-    navigate(`/galpis/${created.id}`)
+    setSaving(true)
+    try {
+      const created = await createGalpi(input)
+      navigate(`/galpis/${created.id}`)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Closing mid-request would let a second form submit again and create a duplicate galpi.
+  function closeCreate() {
+    if (!saving) {
+      setCreating(false)
+    }
   }
 
   return (
@@ -63,8 +76,8 @@ function HomePage() {
       {state.status === 'loaded' && <GalpiSections galpis={state.galpis} onCreate={() => setCreating(true)} />}
 
       {creating && (
-        <Sheet label="새 갈피" onClose={() => setCreating(false)}>
-          <GalpiForm submitLabel="만들기" onSubmit={handleCreate} onCancel={() => setCreating(false)} />
+        <Sheet label="새 갈피" onClose={closeCreate}>
+          <GalpiForm submitLabel="만들기" onSubmit={handleCreate} onCancel={closeCreate} />
         </Sheet>
       )}
     </main>

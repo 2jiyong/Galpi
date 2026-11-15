@@ -99,8 +99,9 @@ function GalpiForm({ initial, submitLabel, onSubmit, onCancel }: GalpiFormProps)
       <div className="flex justify-end gap-2">
         <button
           type="button"
-          className="rounded-full px-5 py-2.5 text-sm font-semibold text-ink/60"
+          className="rounded-full px-5 py-2.5 text-sm font-semibold text-ink/60 disabled:opacity-50"
           onClick={onCancel}
+          disabled={saving}
         >
           취소
         </button>
