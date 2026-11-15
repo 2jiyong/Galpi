@@ -1,37 +1,31 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
+import { jsonResponse, mockFetch } from './test/mockFetch'
+
+function renderAt(path: string) {
+  render(
+    <MemoryRouter initialEntries={[path]}>
+      <App />
+    </MemoryRouter>,
+  )
+}
 
 describe('App', () => {
-  afterEach(() => {
-    vi.restoreAllMocks()
+  afterEach(() => vi.restoreAllMocks())
+
+  it('shows the home page at the root path', async () => {
+    mockFetch({ 'GET /api/galpis': () => jsonResponse([]) })
+
+    renderAt('/')
+
+    expect(await screen.findByText('첫 갈피를 만들어 보세요')).toBeInTheDocument()
   })
 
-  it('shows the Galpi introduction and a connected server state', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify({ status: 'UP', application: 'galpi' }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    )
+  it('shows a not found message for unknown paths', () => {
+    renderAt('/nowhere')
 
-    render(<App />)
-
-    expect(
-      screen.getByRole('heading', { name: /흔들리는 순간/ }),
-    ).toBeInTheDocument()
-    await waitFor(() => {
-      expect(screen.getByText('서버와 연결됨')).toBeInTheDocument()
-    })
-  })
-
-  it('shows a disconnected state when the health request fails', async () => {
-    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('offline'))
-
-    render(<App />)
-
-    await waitFor(() => {
-      expect(screen.getByText('서버 연결 필요')).toBeInTheDocument()
-    })
+    expect(screen.getByText('페이지를 찾을 수 없어요')).toBeInTheDocument()
   })
 })
