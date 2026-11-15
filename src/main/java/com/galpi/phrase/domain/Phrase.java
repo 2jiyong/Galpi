@@ -1,5 +1,6 @@
 package com.galpi.phrase.domain;
 
+import com.galpi.common.domain.InvalidFieldException;
 import com.galpi.common.domain.TextRules;
 import java.time.Instant;
 import java.util.LinkedHashSet;
@@ -75,7 +76,7 @@ public final class Phrase {
             }
         }
         if (normalized.size() > MAX_SOURCES) {
-            throw new IllegalArgumentException("sources must contain at most " + MAX_SOURCES + " items");
+            throw new InvalidFieldException("sources", "sources must contain at most " + MAX_SOURCES + " items");
         }
         return List.copyOf(normalized);
     }
