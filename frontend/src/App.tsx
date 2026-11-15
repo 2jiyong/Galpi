@@ -1,4 +1,5 @@
 import { Link, Route, Routes } from 'react-router'
+import GalpiDetailPage from './pages/GalpiDetailPage'
 import HomePage from './pages/HomePage'
 
 function NotFoundPage() {
@@ -16,8 +17,7 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
-      {/* Detail page arrives in the next task; until then the route shows a loading placeholder. */}
-      <Route path="/galpis/:galpiId" element={<p className="p-4 text-ink/60">불러오는 중…</p>} />
+      <Route path="/galpis/:galpiId" element={<GalpiDetailPage />} />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   )
