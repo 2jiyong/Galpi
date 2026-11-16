@@ -1,6 +1,7 @@
 import { Link, Route, Routes } from 'react-router'
 import GalpiDetailPage from './pages/GalpiDetailPage'
 import HomePage from './pages/HomePage'
+import PhraseDetailPage from './pages/PhraseDetailPage'
 
 function NotFoundPage() {
   return (
@@ -18,6 +19,7 @@ function App() {
     <Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/galpis/:galpiId" element={<GalpiDetailPage />} />
+      <Route path="/galpis/:galpiId/phrases/:phraseId" element={<PhraseDetailPage />} />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   )
