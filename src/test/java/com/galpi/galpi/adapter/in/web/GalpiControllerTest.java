@@ -18,6 +18,7 @@ import com.galpi.galpi.application.GalpiNotFoundException;
 import com.galpi.galpi.application.port.in.GalpiSummary;
 import com.galpi.galpi.application.port.in.GalpiUseCase;
 import com.galpi.galpi.domain.Galpi;
+import com.galpi.galpi.domain.PhraseSort;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -108,5 +109,24 @@ class GalpiControllerTest {
 
         verify(useCase).deleteGalpi(id);
         verify(useCase).markViewed(id);
+    }
+
+    @Test
+    void changesPhraseSort() throws Exception {
+        Galpi galpi = Galpi.create("공부", null, T0);
+        galpi.changePhraseSort(PhraseSort.NEWEST, T0);
+        given(useCase.changePhraseSort(galpi.getId(), PhraseSort.NEWEST)).willReturn(new GalpiSummary(galpi, 0));
+
+        mockMvc.perform(put("/api/galpis/" + galpi.getId() + "/phrase-sort").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"phraseSort\":\"NEWEST\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.phraseSort").value("NEWEST"));
+    }
+
+    @Test
+    void rejectsUnknownPhraseSort() throws Exception {
+        mockMvc.perform(put("/api/galpis/" + UUID.randomUUID() + "/phrase-sort")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"phraseSort\":\"RANDOM\"}"))
+                .andExpect(status().isBadRequest());
     }
 }

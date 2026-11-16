@@ -1,10 +1,12 @@
 package com.galpi.galpi.application.service;
 
+import com.galpi.common.domain.InvalidFieldException;
 import com.galpi.galpi.application.GalpiNotFoundException;
 import com.galpi.galpi.application.port.in.GalpiSummary;
 import com.galpi.galpi.application.port.in.GalpiUseCase;
 import com.galpi.galpi.application.port.out.GalpiRepository;
 import com.galpi.galpi.domain.Galpi;
+import com.galpi.galpi.domain.PhraseSort;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -66,6 +68,16 @@ public class GalpiService implements GalpiUseCase {
         if (!repository.updateLastViewedAt(id, now())) {
             throw new GalpiNotFoundException(id);
         }
+    }
+
+    @Override
+    public GalpiSummary changePhraseSort(UUID id, PhraseSort phraseSort) {
+        if (phraseSort == null) {
+            throw new InvalidFieldException("phraseSort", "phraseSort is required");
+        }
+        Galpi galpi = load(id);
+        galpi.changePhraseSort(phraseSort, now());
+        return summarize(repository.save(galpi));
     }
 
     private Galpi load(UUID id) {

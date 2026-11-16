@@ -25,6 +25,9 @@ class PhraseJpaEntity {
     @Column(name = "galpi_id", nullable = false)
     private UUID galpiId;
 
+    @Column(length = Phrase.TITLE_MAX_LENGTH)
+    private String title;
+
     @Column(nullable = false, length = Phrase.CONTENT_MAX_LENGTH)
     private String content;
 
@@ -54,6 +57,7 @@ class PhraseJpaEntity {
         PhraseJpaEntity entity = new PhraseJpaEntity();
         entity.id = phrase.getId();
         entity.galpiId = phrase.getGalpiId();
+        entity.title = phrase.getTitle();
         entity.content = phrase.getContent();
         entity.sources = new ArrayList<>(phrase.getSources());
         entity.favorite = phrase.isFavorite();
@@ -64,6 +68,6 @@ class PhraseJpaEntity {
     }
 
     Phrase toDomain() {
-        return Phrase.restore(id, galpiId, content, sources, favorite, createdAt, updatedAt);
+        return Phrase.restore(id, galpiId, title, content, sources, favorite, createdAt, updatedAt);
     }
 }

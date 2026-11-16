@@ -14,6 +14,6 @@ class GalpiApplicationTests extends PostgresIntegrationTest {
 
     @Test
     void contextLoadsWithPostgresAndFlyway() {
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("3");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("4");
     }
 }

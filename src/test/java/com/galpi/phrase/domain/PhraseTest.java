@@ -3,6 +3,7 @@ package com.galpi.phrase.domain;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.galpi.common.domain.InvalidFieldException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -18,7 +19,7 @@ class PhraseTest {
 
     @Test
     void normalizesSourcesWhilePreservingOrder() {
-        Phrase phrase = Phrase.create(GALPI_ID, "  발을 먼저 보기  ",
+        Phrase phrase = Phrase.create(GALPI_ID, null, "  발을 먼저 보기  ",
                 List.of("  수업  ", "영상", "수업"), T0);
 
         assertThat(phrase.getContent()).isEqualTo("발을 먼저 보기");
@@ -29,7 +30,7 @@ class PhraseTest {
 
     @Test
     void allowsNoSourcesAndDefaultsToNotFavorite() {
-        Phrase phrase = Phrase.create(GALPI_ID, "팔보다 다리로", null, T0);
+        Phrase phrase = Phrase.create(GALPI_ID, null, "팔보다 다리로", null, T0);
 
         assertThat(phrase.getId()).isNotNull();
         assertThat(phrase.getGalpiId()).isEqualTo(GALPI_ID);
@@ -41,9 +42,9 @@ class PhraseTest {
 
     @Test
     void rejectsInvalidSourcesWithoutChangingContent() {
-        Phrase phrase = Phrase.create(GALPI_ID, "원래 문장", List.of("원래 출처"), T0);
+        Phrase phrase = Phrase.create(GALPI_ID, null, "원래 문장", List.of("원래 출처"), T0);
 
-        assertThatThrownBy(() -> phrase.update("바뀐 문장", List.of(" "), T1))
+        assertThatThrownBy(() -> phrase.update(null, "바뀐 문장", List.of(" "), T1))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThat(phrase.getContent()).isEqualTo("원래 문장");
         assertThat(phrase.getSources()).containsExactly("원래 출처");
@@ -56,7 +57,7 @@ class PhraseTest {
                 .mapToObj(index -> "출처 " + index)
                 .toList();
 
-        assertThatThrownBy(() -> Phrase.create(GALPI_ID, "문장", sources, T0))
+        assertThatThrownBy(() -> Phrase.create(GALPI_ID, null, "문장", sources, T0))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -67,24 +68,24 @@ class PhraseTest {
                 .toList());
         sources.add("출처 0");
 
-        Phrase phrase = Phrase.create(GALPI_ID, "문장", sources, T0);
+        Phrase phrase = Phrase.create(GALPI_ID, null, "문장", sources, T0);
 
         assertThat(phrase.getSources()).hasSize(10);
     }
 
     @Test
     void rejectsOverlongContentAndSource() {
-        assertThatThrownBy(() -> Phrase.create(GALPI_ID, "가".repeat(501), List.of(), T0))
+        assertThatThrownBy(() -> Phrase.create(GALPI_ID, null, "가".repeat(501), List.of(), T0))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> Phrase.create(GALPI_ID, "문장", List.of("가".repeat(201)), T0))
+        assertThatThrownBy(() -> Phrase.create(GALPI_ID, null, "문장", List.of("가".repeat(201)), T0))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void updateReplacesContentAndSources() {
-        Phrase phrase = Phrase.create(GALPI_ID, "원래 문장", List.of("a", "b"), T0);
+        Phrase phrase = Phrase.create(GALPI_ID, null, "원래 문장", List.of("a", "b"), T0);
 
-        phrase.update("바뀐 문장", List.of("c"), T1);
+        phrase.update(null, "바뀐 문장", List.of("c"), T1);
 
         assertThat(phrase.getContent()).isEqualTo("바뀐 문장");
         assertThat(phrase.getSources()).containsExactly("c");
@@ -93,7 +94,7 @@ class PhraseTest {
 
     @Test
     void moveToChangesGalpi() {
-        Phrase phrase = Phrase.create(GALPI_ID, "문장", List.of(), T0);
+        Phrase phrase = Phrase.create(GALPI_ID, null, "문장", List.of(), T0);
         UUID other = UUID.randomUUID();
 
         phrase.moveTo(other, T1);
@@ -104,7 +105,7 @@ class PhraseTest {
 
     @Test
     void changeFavoriteTouchesUpdatedAt() {
-        Phrase phrase = Phrase.create(GALPI_ID, "문장", List.of(), T0);
+        Phrase phrase = Phrase.create(GALPI_ID, null, "문장", List.of(), T0);
 
         phrase.changeFavorite(true, T1);
 
@@ -114,10 +115,10 @@ class PhraseTest {
 
     @Test
     void rejectsNullGalpi() {
-        assertThatThrownBy(() -> Phrase.create(null, "문장", List.of(), T0))
+        assertThatThrownBy(() -> Phrase.create(null, null, "문장", List.of(), T0))
                 .isInstanceOf(NullPointerException.class);
 
-        Phrase phrase = Phrase.create(GALPI_ID, "문장", List.of(), T0);
+        Phrase phrase = Phrase.create(GALPI_ID, null, "문장", List.of(), T0);
         assertThatThrownBy(() -> phrase.moveTo(null, T1))
                 .isInstanceOf(NullPointerException.class);
         assertThat(phrase.getGalpiId()).isEqualTo(GALPI_ID);
@@ -127,7 +128,7 @@ class PhraseTest {
     void restoreKeepsGivenValues() {
         UUID id = UUID.randomUUID();
 
-        Phrase phrase = Phrase.restore(id, GALPI_ID, "문장", List.of("수업"), true, T0, T1);
+        Phrase phrase = Phrase.restore(id, GALPI_ID, null, "문장", List.of("수업"), true, T0, T1);
 
         assertThat(phrase.getId()).isEqualTo(id);
         assertThat(phrase.getGalpiId()).isEqualTo(GALPI_ID);
@@ -136,5 +137,31 @@ class PhraseTest {
         assertThat(phrase.isFavorite()).isTrue();
         assertThat(phrase.getCreatedAt()).isEqualTo(T0);
         assertThat(phrase.getUpdatedAt()).isEqualTo(T1);
+    }
+
+    @Test
+    void trimsTitleAndTurnsBlankIntoNull() {
+        assertThat(Phrase.create(GALPI_ID, "  다리로 밀기 ", "문장", List.of(), T0).getTitle()).isEqualTo("다리로 밀기");
+        assertThat(Phrase.create(GALPI_ID, "   ", "문장", List.of(), T0).getTitle()).isNull();
+    }
+
+    @Test
+    void rejectsOverlongTitleWithoutChangingPhrase() {
+        Phrase phrase = Phrase.create(GALPI_ID, "제목", "문장", List.of(), T0);
+
+        assertThatThrownBy(() -> phrase.update("가".repeat(51), "바뀐 문장", List.of(), T1))
+                .isInstanceOf(InvalidFieldException.class)
+                .satisfies(error -> assertThat(((InvalidFieldException) error).field()).isEqualTo("title"));
+        assertThat(phrase.getTitle()).isEqualTo("제목");
+        assertThat(phrase.getContent()).isEqualTo("문장");
+    }
+
+    @Test
+    void updateCanClearTitle() {
+        Phrase phrase = Phrase.create(GALPI_ID, "제목", "문장", List.of(), T0);
+
+        phrase.update("", "문장", List.of(), T1);
+
+        assertThat(phrase.getTitle()).isNull();
     }
 }

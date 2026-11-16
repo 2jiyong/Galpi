@@ -2,6 +2,7 @@ package com.galpi.phrase.adapter.out.persistence;
 
 import com.galpi.phrase.application.port.out.PhraseRepository;
 import com.galpi.phrase.domain.Phrase;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
@@ -26,5 +27,17 @@ class PhrasePersistenceAdapter implements PhraseRepository {
     @Transactional(readOnly = true)
     public Optional<Phrase> findById(UUID id) {
         return repository.findById(id).map(PhraseJpaEntity::toDomain);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Phrase> findAllByGalpiId(UUID galpiId) {
+        return repository.findAllByGalpiId(galpiId).stream().map(PhraseJpaEntity::toDomain).toList();
+    }
+
+    @Override
+    @Transactional
+    public boolean deleteById(UUID id) {
+        return repository.deleteByIdReturningCount(id) > 0;
     }
 }

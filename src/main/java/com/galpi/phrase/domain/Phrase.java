@@ -10,22 +10,25 @@ import java.util.UUID;
 
 public final class Phrase {
 
+    public static final int TITLE_MAX_LENGTH = 50;
     public static final int CONTENT_MAX_LENGTH = 500;
     public static final int SOURCE_MAX_LENGTH = 200;
     public static final int MAX_SOURCES = 10;
 
     private final UUID id;
     private UUID galpiId;
+    private String title;
     private String content;
     private List<String> sources;
     private boolean favorite;
     private final Instant createdAt;
     private Instant updatedAt;
 
-    private Phrase(UUID id, UUID galpiId, String content, List<String> sources, boolean favorite,
+    private Phrase(UUID id, UUID galpiId, String title, String content, List<String> sources, boolean favorite,
             Instant createdAt, Instant updatedAt) {
         this.id = Objects.requireNonNull(id, "id is required");
         this.galpiId = Objects.requireNonNull(galpiId, "galpiId is required");
+        this.title = normalizeTitle(title);
         this.content = normalizeContent(content);
         this.sources = normalizeSources(sources);
         this.favorite = favorite;
@@ -33,19 +36,22 @@ public final class Phrase {
         this.updatedAt = Objects.requireNonNull(updatedAt, "updatedAt is required");
     }
 
-    public static Phrase create(UUID galpiId, String content, List<String> sources, Instant now) {
-        return new Phrase(UUID.randomUUID(), galpiId, content, sources, false, now, now);
+    /** {@code title} is optional; a blank title is stored as {@code null}. */
+    public static Phrase create(UUID galpiId, String title, String content, List<String> sources, Instant now) {
+        return new Phrase(UUID.randomUUID(), galpiId, title, content, sources, false, now, now);
     }
 
-    public static Phrase restore(UUID id, UUID galpiId, String content, List<String> sources, boolean favorite,
-            Instant createdAt, Instant updatedAt) {
-        return new Phrase(id, galpiId, content, sources, favorite, createdAt, updatedAt);
+    public static Phrase restore(UUID id, UUID galpiId, String title, String content, List<String> sources,
+            boolean favorite, Instant createdAt, Instant updatedAt) {
+        return new Phrase(id, galpiId, title, content, sources, favorite, createdAt, updatedAt);
     }
 
-    public void update(String content, List<String> sources, Instant now) {
+    public void update(String title, String content, List<String> sources, Instant now) {
+        String normalizedTitle = normalizeTitle(title);
         String normalizedContent = normalizeContent(content);
         List<String> normalizedSources = normalizeSources(sources);
         Objects.requireNonNull(now, "now is required");
+        this.title = normalizedTitle;
         this.content = normalizedContent;
         this.sources = normalizedSources;
         this.updatedAt = now;
@@ -62,6 +68,10 @@ public final class Phrase {
         Objects.requireNonNull(now, "now is required");
         this.favorite = favorite;
         this.updatedAt = now;
+    }
+
+    private static String normalizeTitle(String title) {
+        return TextRules.optional(title, TITLE_MAX_LENGTH, "title");
     }
 
     private static String normalizeContent(String content) {
@@ -87,6 +97,10 @@ public final class Phrase {
 
     public UUID getGalpiId() {
         return galpiId;
+    }
+
+    public String getTitle() {
+        return title;
     }
 
     public String getContent() {
