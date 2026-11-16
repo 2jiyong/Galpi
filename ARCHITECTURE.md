@@ -28,10 +28,17 @@ HTTP 요청 → 입력 어댑터 → 입력 포트/유스케이스 → 도메인
 ```text
 com.galpi.<기능>/
 ├── domain/                        # 순수 도메인 모델과 규칙
+├── application/port/in/           # 유스케이스 (입력 포트)
 ├── application/port/out/          # 저장소 등 출력 포트 (인터페이스)
+├── application/service/           # 유스케이스 구현, 트랜잭션 경계
+├── adapter/in/web/                # REST 컨트롤러와 요청·응답 형식
 └── adapter/out/persistence/       # JPA 엔티티, Spring Data 리포지토리, 출력 포트 구현
 ```
 
 공통 문자열 검증은 `com.galpi.common.domain.TextRules`에 있다. 문장은 갈피를 객체가 아니라 `galpiId`로만 참조하며, 갈피 삭제 시 연쇄 삭제는 DB 외래 키가 처리한다.
 
-다음 단계는 유스케이스(`application/port/in`, `application/service`)와 REST 컨트롤러(`adapter/in/web`)를 추가하는 것이다.
+- 문장 표시 순서(즐겨찾기 먼저 → 갈피의 정렬 설정에 따른 만든 시각 → id)는 도메인 규칙 `PhraseOrder`에 있다
+- 문장 서비스는 갈피 존재 확인과 정렬 설정을 갈피 기능의 출력 포트 `GalpiRepository`로 읽는다
+- 404 예외는 `common.application.ResourceNotFoundException`을 상속하고, 공통 예외 처리기는 이 부모 하나만 안다
+
+갈피 CRUD(최근 본 갈피 포함)와 문장 CRUD·정렬·즐겨찾기를 화면까지 마쳤다. 다음 단계는 집중 보기와 홈의 무작위 문장이다.
