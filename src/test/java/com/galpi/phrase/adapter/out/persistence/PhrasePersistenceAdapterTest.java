@@ -93,4 +93,30 @@ class PhrasePersistenceAdapterTest extends PostgresIntegrationTest {
         assertThatThrownBy(() -> repository.save(phrase))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
+
+    @Test
+    void findAllByGalpiIdReturnsOnlyThatGalpisPhrasesWithSources() {
+        Phrase first = repository.save(Phrase.create(galpiA.getId(), "첫 문장", List.of("수업", "영상"), T0));
+        Phrase second = repository.save(Phrase.create(galpiA.getId(), "둘째 문장", List.of(), T1));
+        repository.save(Phrase.create(galpiB.getId(), "다른 갈피", List.of(), T0));
+
+        List<Phrase> found = repository.findAllByGalpiId(galpiA.getId());
+
+        assertThat(found).extracting(Phrase::getId).containsExactlyInAnyOrder(first.getId(), second.getId());
+        assertThat(found).filteredOn(phrase -> phrase.getId().equals(first.getId()))
+                .singleElement()
+                .satisfies(phrase -> assertThat(phrase.getSources()).containsExactly("수업", "영상"));
+    }
+
+    @Test
+    void deleteByIdRemovesPhraseAndSources() {
+        Phrase phrase = repository.save(Phrase.create(galpiA.getId(), "문장", List.of("수업"), T0));
+
+        assertThat(repository.deleteById(phrase.getId())).isTrue();
+
+        assertThat(repository.findById(phrase.getId())).isEmpty();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM phrase_sources WHERE phrase_id = ?", Long.class,
+                phrase.getId())).isZero();
+        assertThat(repository.deleteById(UUID.randomUUID())).isFalse();
+    }
 }

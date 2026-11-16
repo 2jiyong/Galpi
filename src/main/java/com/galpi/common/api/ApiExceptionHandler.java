@@ -1,7 +1,7 @@
 package com.galpi.common.api;
 
+import com.galpi.common.application.ResourceNotFoundException;
 import com.galpi.common.domain.InvalidFieldException;
-import com.galpi.galpi.application.GalpiNotFoundException;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -21,10 +21,10 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         return problem;
     }
 
-    @ExceptionHandler(GalpiNotFoundException.class)
-    ProblemDetail handleGalpiNotFound(GalpiNotFoundException exception) {
+    @ExceptionHandler(ResourceNotFoundException.class)
+    ProblemDetail handleNotFound(ResourceNotFoundException exception) {
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
-        problem.setTitle("갈피를 찾을 수 없습니다");
+        problem.setTitle(exception.title());
         return problem;
     }
 }
