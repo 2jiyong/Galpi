@@ -5,7 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.galpi.galpi.application.GalpiNotFoundException;
 import com.galpi.galpi.application.port.in.GalpiSummary;
+import com.galpi.common.domain.InvalidFieldException;
 import com.galpi.galpi.domain.Galpi;
+import com.galpi.galpi.domain.PhraseSort;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -147,5 +149,32 @@ class GalpiServiceTest {
         assertThatThrownBy(() -> service.getGalpi(id))
                 .isInstanceOf(GalpiNotFoundException.class)
                 .satisfies(error -> assertThat(((GalpiNotFoundException) error).id()).isEqualTo(id));
+    }
+
+    @Test
+    void changePhraseSortSavesSetting() {
+        Galpi galpi = existing("공부", T0);
+
+        GalpiSummary changed = service.changePhraseSort(galpi.getId(), PhraseSort.NEWEST);
+
+        assertThat(changed.galpi().getPhraseSort()).isEqualTo(PhraseSort.NEWEST);
+        Galpi stored = repository.findById(galpi.getId()).orElseThrow();
+        assertThat(stored.getPhraseSort()).isEqualTo(PhraseSort.NEWEST);
+        assertThat(stored.getUpdatedAt()).isEqualTo(T1);
+    }
+
+    @Test
+    void changePhraseSortThrowsWhenMissing() {
+        assertThatThrownBy(() -> service.changePhraseSort(UUID.randomUUID(), PhraseSort.NEWEST))
+                .isInstanceOf(GalpiNotFoundException.class);
+    }
+
+    @Test
+    void changePhraseSortRejectsNull() {
+        Galpi galpi = existing("공부", T0);
+
+        assertThatThrownBy(() -> service.changePhraseSort(galpi.getId(), null))
+                .isInstanceOf(InvalidFieldException.class)
+                .satisfies(error -> assertThat(((InvalidFieldException) error).field()).isEqualTo("phraseSort"));
     }
 }

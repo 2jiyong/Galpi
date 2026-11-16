@@ -71,4 +71,10 @@ public class GalpiController {
         useCase.markViewed(id);
         return ResponseEntity.noContent().build();
     }
+
+    @Operation(summary = "문장 정렬 설정 저장")
+    @PutMapping("/{id}/phrase-sort")
+    public GalpiResponse changePhraseSort(@PathVariable UUID id, @RequestBody PhraseSortRequest request) {
+        return GalpiResponse.from(useCase.changePhraseSort(id, request.phraseSort()));
+    }
 }
