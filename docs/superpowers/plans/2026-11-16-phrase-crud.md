@@ -156,3 +156,63 @@
 - [ ] `ARCHITECTURE.md` "현재 상태와 다음 단계"를 갱신(문장 기능 완료, 다음은 4단계)
 - [ ] `graphify update .`
 - [ ] 커밋 `docs: 3단계 완료 상태 반영`
+
+---
+
+## 추가 작업: 문장 제목과 문장 상세 (2026-11-16 변경)
+
+사용자가 기능을 써 본 뒤 바꾼 설계다. 명세 1, 2, 3.3~3.5, 4, 5, 6절에 반영했다.
+
+- 문장 제목(선택, 0~50자, 비면 null). 화면 제목 = 제목 또는 내용 첫 줄 30자 + `…`
+- 추가 폼에는 갈피 선택이 없고, 편집 폼에만 있다
+- 갈피 상세: "집중해서 보기" 버튼 삭제, 목록 줄은 ★ + 화면 제목(문장 상세 링크)만
+- 문장 상세 `/galpis/:galpiId/phrases/:phraseId`: 제목·내용·출처, ◀ ▶ + 스와이프, `n/전체`, ★, 편집, 삭제
+
+### Task 9: 문장 제목 (백엔드)
+
+**Files:** `V4__add_phrase_title.sql`, `Phrase`, `PhraseJpaEntity`, `PhraseUseCase`/`PhraseService`, `PhraseRequest`/`PhraseResponse`, 관련 테스트
+
+**Interfaces:**
+- `Phrase.TITLE_MAX_LENGTH = 50`; `Phrase.create(galpiId, title, content, sources, now)`, `restore(id, galpiId, title, content, sources, favorite, createdAt, updatedAt)`, `update(title, content, sources, now)`; `getTitle()` (nullable). 검증 `TextRules.optional(title, 50, "title")`
+- `createPhrase(galpiId, title, content, sources)`, `updatePhrase(id, title, content, sources, galpiId)`
+- 요청·응답에 `title`
+
+- [ ] 테스트: `PhraseTest.blankTitleBecomesNull`, `rejectsOverlongTitle`, 영속성 `persistsTitle`, 통합 테스트에서 `title` 왕복, `GalpiApplicationTests` Flyway 버전 "4"
+- [ ] 커밋 `feat: 문장 제목 추가`
+
+### Task 10: 프론트 제목 입력과 표시
+
+**Files:** `api/phrases.ts`, `lib/phraseTitle.ts`, `lib/phraseValidation.ts`, `components/PhraseForm.tsx`
+
+**Interfaces:**
+- `Phrase.title: string | null`, `PhraseInput.title: string`
+- `displayTitle(phrase: Pick<Phrase, 'title' | 'content'>): string` — 제목 또는 내용 첫 줄, 30자 초과면 30자 + `…`
+- `PhraseForm`: `제목 (선택)` 입력 추가(50자 초과 "제목은 50자까지 쓸 수 있어요", 서버 `title` "제목은 50자까지 쓸 수 있어요"). `galpis` prop이 없으면 갈피 선택을 숨긴다
+
+- [ ] 테스트: `displayTitle` (제목 우선, 첫 줄, 30자 자르기), 폼 `hidesGalpiSelectWithoutGalpis`, 제목 전송·검증
+- [ ] 커밋 `feat: 문장 제목 입력과 자동 제목 표시 추가`
+
+### Task 11: 갈피 상세를 제목 목록으로
+
+**Files:** `pages/GalpiDetailPage.tsx`, `components/PhraseList.tsx`
+
+- "집중해서 보기"와 목록의 편집 버튼 삭제. 목록 줄 = ★ 버튼 + 화면 제목 링크(`/galpis/{g}/phrases/{p}`)
+- `+ 문장 추가` 시트는 갈피 선택 없이 현재 갈피에 저장 (갈피 목록을 불러오지 않음)
+
+- [ ] 테스트 갱신: 제목 링크 href, 자동 제목 표시, 추가 시 `GET /api/galpis` 호출 없음, 즐겨찾기 순서 유지 유지
+- [ ] 커밋 `feat: 갈피 상세를 제목 목록으로 바꿈`
+
+### Task 12: 문장 상세 화면
+
+**Files:** `pages/PhraseDetailPage.tsx`, `App.tsx`
+
+**Interfaces:**
+- 갈피와 문장 목록을 불러와 `phraseId`의 위치를 찾는다. 넘길 때는 `navigate(..., { replace: true })`로 주소만 바꾸고 목록은 다시 불러오지 않는다
+- 진입 시 `markGalpiViewed`
+- `이전 문장`/`다음 문장` 버튼(처음/끝에서 비활성), 터치 가로 이동 50px 이상이면 넘김, `n/전체`
+- ★: 그 자리에서 별만 바뀜. 편집: 시트(갈피 선택 포함, 삭제 버튼). 저장 후 목록 재조회, 다른 갈피로 옮겼거나 삭제하면 갈피 상세로 이동
+- 목록에 없으면 "문장을 찾을 수 없어요" + 갈피로 돌아가기
+
+- [ ] 테스트: `showsPhraseWithPosition`, `nextAndPreviousMoveWithinList`, `swipeMovesToNext`, `stopsAtEnds`, `favoriteKeepsPosition`, `editSavesAndStays`, `movingGoesBackToGalpi`, `deleteGoesBackToGalpi`, `showsNotFoundForUnknownPhrase`
+- [ ] 문서(ARCHITECTURE 다음 단계), `graphify update .`
+- [ ] 커밋 `feat: 문장 상세 화면과 좌우 넘기기 추가`
