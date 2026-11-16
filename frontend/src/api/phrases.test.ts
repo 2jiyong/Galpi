@@ -7,6 +7,7 @@ import { createPhrase, deletePhrase, listPhrases, setPhraseFavorite, updatePhras
 const phrase = {
   id: 'p1',
   galpiId: 'g1',
+  title: null,
   content: '발부터 보기',
   sources: ['수업'],
   favorite: false,
@@ -29,17 +30,17 @@ describe('phrases api', () => {
   it('createPhrasePostsToChosenGalpi', async () => {
     const fetchMock = mockFetch({ 'POST /api/galpis/g2/phrases': () => jsonResponse(phrase, 201) })
 
-    await createPhrase({ content: '문장', sources: ['책'], galpiId: 'g2' })
+    await createPhrase({ title: '제목', content: '문장', sources: ['책'], galpiId: 'g2' })
 
-    expect(body(fetchMock.mock.calls[0][1])).toEqual({ content: '문장', sources: ['책'] })
+    expect(body(fetchMock.mock.calls[0][1])).toEqual({ title: '제목', content: '문장', sources: ['책'] })
   })
 
   it('updatePhraseSendsGalpiId', async () => {
     const fetchMock = mockFetch({ 'PUT /api/phrases/p1': () => jsonResponse(phrase) })
 
-    await updatePhrase('p1', { content: '문장', sources: [], galpiId: 'g2' })
+    await updatePhrase('p1', { title: '', content: '문장', sources: [], galpiId: 'g2' })
 
-    expect(body(fetchMock.mock.calls[0][1])).toEqual({ content: '문장', sources: [], galpiId: 'g2' })
+    expect(body(fetchMock.mock.calls[0][1])).toEqual({ title: '', content: '문장', sources: [], galpiId: 'g2' })
   })
 
   it('setPhraseFavoritePutsFlag', async () => {
@@ -69,7 +70,7 @@ describe('phrases api', () => {
         jsonResponse({ status: 400, errors: [{ field: 'sources', message: 'x' }] }, 400),
     })
 
-    const error = await createPhrase({ content: '문장', sources: [], galpiId: 'g1' }).catch((caught) => caught)
+    const error = await createPhrase({ title: '', content: '문장', sources: [], galpiId: 'g1' }).catch((caught) => caught)
 
     expect(error).toBeInstanceOf(ApiError)
     expect(error.fieldErrors).toEqual({ sources: 'x' })

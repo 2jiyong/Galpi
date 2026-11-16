@@ -11,6 +11,7 @@ import {
 
 // The server reports which field failed; the wording shown to people is chosen here.
 const SERVER_FIELD_MESSAGES: Record<string, { field: keyof PhraseFieldErrors; message: string }> = {
+  title: { field: 'title', message: '제목은 50자까지 쓸 수 있어요' },
   content: { field: 'content', message: '내용은 1~500자로 입력해 주세요' },
   source: { field: 'sources', message: '출처는 1~200자로 입력해 주세요' },
   sources: { field: 'sources', message: '출처는 10개까지 넣을 수 있어요' },
@@ -35,7 +36,8 @@ export type GalpiOption = { id: string; title: string }
 
 type PhraseFormProps = {
   initial: PhraseInput
-  galpis: GalpiOption[]
+  /** Galpis the phrase can be saved in. Without it the phrase stays in `initial.galpiId` and no choice is shown. */
+  galpis?: GalpiOption[]
   submitLabel: string
   onSubmit: (input: PhraseInput) => Promise<void>
   onCancel: () => void
@@ -44,12 +46,14 @@ type PhraseFormProps = {
 }
 
 function PhraseForm({ initial, galpis, submitLabel, onSubmit, onCancel, onDelete }: PhraseFormProps) {
+  const [title, setTitle] = useState(initial.title)
   const [content, setContent] = useState(initial.content)
   const [sources, setSources] = useState<string[]>(initial.sources)
   const [galpiId, setGalpiId] = useState(initial.galpiId)
   const [fieldErrors, setFieldErrors] = useState<PhraseFieldErrors>({})
   const [formError, setFormError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const titleId = useId()
   const contentId = useId()
   const galpiSelectId = useId()
 
@@ -69,7 +73,7 @@ function PhraseForm({ initial, galpis, submitLabel, onSubmit, onCancel, onDelete
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const input = normalizePhraseInput({ content, sources, galpiId })
+    const input = normalizePhraseInput({ title, content, sources, galpiId })
     const errors = validatePhraseInput(input)
     setFieldErrors(errors)
     setFormError(null)
@@ -93,6 +97,22 @@ function PhraseForm({ initial, galpis, submitLabel, onSubmit, onCancel, onDelete
   return (
     <form className="flex flex-col gap-5" onSubmit={handleSubmit} noValidate>
       <div className="flex flex-col gap-2">
+        <label className="text-sm font-semibold text-ink/80" htmlFor={titleId}>
+          제목 (선택)
+        </label>
+        <input
+          id={titleId}
+          className={inputClass}
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+          placeholder="비워 두면 내용 앞부분이 제목이 돼요"
+          aria-invalid={fieldErrors.title ? true : undefined}
+          autoFocus
+        />
+        {fieldErrors.title && <p className="text-sm text-rose-700">{fieldErrors.title}</p>}
+      </div>
+
+      <div className="flex flex-col gap-2">
         <label className="text-sm font-semibold text-ink/80" htmlFor={contentId}>
           내용
         </label>
@@ -102,7 +122,6 @@ function PhraseForm({ initial, galpis, submitLabel, onSubmit, onCancel, onDelete
           value={content}
           onChange={(event) => setContent(event.target.value)}
           aria-invalid={fieldErrors.content ? true : undefined}
-          autoFocus
         />
         <div className="flex justify-between gap-2 text-sm">
           <span className="text-rose-700">{fieldErrors.content}</span>
@@ -143,23 +162,25 @@ function PhraseForm({ initial, galpis, submitLabel, onSubmit, onCancel, onDelete
         {fieldErrors.sources && <p className="text-sm text-rose-700">{fieldErrors.sources}</p>}
       </fieldset>
 
-      <div className="flex flex-col gap-2">
-        <label className="text-sm font-semibold text-ink/80" htmlFor={galpiSelectId}>
-          갈피
-        </label>
-        <select
-          id={galpiSelectId}
-          className={inputClass}
-          value={galpiId}
-          onChange={(event) => setGalpiId(event.target.value)}
-        >
-          {galpis.map((galpi) => (
-            <option key={galpi.id} value={galpi.id}>
-              {galpi.title}
-            </option>
-          ))}
-        </select>
-      </div>
+      {galpis && (
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-semibold text-ink/80" htmlFor={galpiSelectId}>
+            갈피
+          </label>
+          <select
+            id={galpiSelectId}
+            className={inputClass}
+            value={galpiId}
+            onChange={(event) => setGalpiId(event.target.value)}
+          >
+            {galpis.map((galpi) => (
+              <option key={galpi.id} value={galpi.id}>
+                {galpi.title}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {formError && <p className="text-sm text-rose-700">{formError}</p>}
 

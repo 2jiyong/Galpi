@@ -40,6 +40,7 @@ function phrase(overrides: Partial<Phrase>): Phrase {
   return {
     id: 'p1',
     galpiId: 'g1',
+    title: null,
     content: '문장',
     sources: [],
     favorite: false,
@@ -253,6 +254,7 @@ describe('GalpiDetailPage', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: '집중해서 보기' })).toBeEnabled()
     expect(JSON.parse(calls(fetchMock, 'POST', '/api/galpis/g1/phrases')[0][1]!.body as string)).toEqual({
+      title: '',
       content: '새 문장',
       sources: [],
     })
@@ -284,6 +286,7 @@ describe('GalpiDetailPage', () => {
     expect(await screen.findByText('아직 문장이 없어요')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '집중해서 보기' })).toBeDisabled()
     expect(JSON.parse(calls(fetchMock, 'PUT', '/api/phrases/p1')[0][1]!.body as string)).toEqual({
+      title: '',
       content: '옮길 문장',
       sources: ['책'],
       galpiId: 'g2',

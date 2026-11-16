@@ -337,11 +337,12 @@ function GalpiDetailPage() {
             initial={
               phraseSheet.mode === 'edit'
                 ? {
+                    title: phraseSheet.phrase.title ?? '',
                     content: phraseSheet.phrase.content,
                     sources: phraseSheet.phrase.sources,
                     galpiId: phraseSheet.phrase.galpiId,
                   }
-                : { content: '', sources: [], galpiId: galpi.id }
+                : { title: '', content: '', sources: [], galpiId: galpi.id }
             }
             galpis={galpiOptions}
             submitLabel="저장"

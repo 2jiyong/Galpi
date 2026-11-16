@@ -12,14 +12,15 @@ const galpis = [
 
 function renderForm(props: {
   initial?: PhraseInput
+  withGalpis?: boolean
   onSubmit?: (input: PhraseInput) => Promise<void>
   onDelete?: () => Promise<void>
 }) {
   const onSubmit = props.onSubmit ?? vi.fn(async () => {})
   render(
     <PhraseForm
-      initial={props.initial ?? { content: '', sources: [], galpiId: 'g1' }}
-      galpis={galpis}
+      initial={props.initial ?? { title: '', content: '', sources: [], galpiId: 'g1' }}
+      galpis={props.withGalpis === false ? undefined : galpis}
       submitLabel="저장"
       onSubmit={onSubmit}
       onCancel={() => {}}
@@ -40,7 +41,7 @@ describe('PhraseForm', () => {
     await userEvent.selectOptions(screen.getByLabelText('갈피'), 'g2')
     await userEvent.click(screen.getByRole('button', { name: '저장' }))
 
-    expect(onSubmit).toHaveBeenCalledWith({ content: '발부터 보기', sources: ['수업'], galpiId: 'g2' })
+    expect(onSubmit).toHaveBeenCalledWith({ title: '', content: '발부터 보기', sources: ['수업'], galpiId: 'g2' })
   })
 
   it('showsContentLength', async () => {
@@ -62,7 +63,7 @@ describe('PhraseForm', () => {
   })
 
   it('rejectsOverlongSource', async () => {
-    const onSubmit = renderForm({ initial: { content: '문장', sources: ['가'.repeat(201)], galpiId: 'g1' } })
+    const onSubmit = renderForm({ initial: { title: '', content: '문장', sources: ['가'.repeat(201)], galpiId: 'g1' } })
 
     await userEvent.click(screen.getByRole('button', { name: '저장' }))
 
@@ -72,7 +73,7 @@ describe('PhraseForm', () => {
 
   it('limitsSourcesToTen', async () => {
     const sources = Array.from({ length: 9 }, (_, index) => `출처${index}`)
-    renderForm({ initial: { content: '문장', sources, galpiId: 'g1' } })
+    renderForm({ initial: { title: '', content: '문장', sources, galpiId: 'g1' } })
 
     const add = screen.getByRole('button', { name: '+ 출처 추가' })
     await userEvent.click(add)
@@ -82,17 +83,17 @@ describe('PhraseForm', () => {
   })
 
   it('removesSourceRow', async () => {
-    const onSubmit = renderForm({ initial: { content: '문장', sources: ['a', 'b'], galpiId: 'g1' } })
+    const onSubmit = renderForm({ initial: { title: '', content: '문장', sources: ['a', 'b'], galpiId: 'g1' } })
 
     await userEvent.click(screen.getByRole('button', { name: '출처 1 삭제' }))
     await userEvent.click(screen.getByRole('button', { name: '저장' }))
 
-    expect(onSubmit).toHaveBeenCalledWith({ content: '문장', sources: ['b'], galpiId: 'g1' })
+    expect(onSubmit).toHaveBeenCalledWith({ title: '', content: '문장', sources: ['b'], galpiId: 'g1' })
   })
 
   it('showsServerFieldError', async () => {
     renderForm({
-      initial: { content: '문장', sources: [], galpiId: 'g1' },
+      initial: { title: '', content: '문장', sources: [], galpiId: 'g1' },
       onSubmit: async () => {
         throw new ApiError(400, { sources: 'too many' })
       },
@@ -105,7 +106,7 @@ describe('PhraseForm', () => {
 
   it('disablesButtonsWhileSaving', async () => {
     renderForm({
-      initial: { content: '문장', sources: [], galpiId: 'g1' },
+      initial: { title: '', content: '문장', sources: [], galpiId: 'g1' },
       onSubmit: () => new Promise<void>(() => {}),
       onDelete: async () => {},
     })
@@ -121,5 +122,30 @@ describe('PhraseForm', () => {
     renderForm({})
 
     expect(screen.queryByRole('button', { name: '삭제' })).not.toBeInTheDocument()
+  })
+
+  it('sendsTrimmedTitle', async () => {
+    const onSubmit = renderForm({})
+
+    await userEvent.type(screen.getByLabelText('제목 (선택)'), ' 다리로 밀기 ')
+    await userEvent.type(screen.getByLabelText('내용'), '팔보다 다리')
+    await userEvent.click(screen.getByRole('button', { name: '저장' }))
+
+    expect(onSubmit).toHaveBeenCalledWith({ title: '다리로 밀기', content: '팔보다 다리', sources: [], galpiId: 'g1' })
+  })
+
+  it('rejectsOverlongTitle', async () => {
+    const onSubmit = renderForm({ initial: { title: '가'.repeat(51), content: '문장', sources: [], galpiId: 'g1' } })
+
+    await userEvent.click(screen.getByRole('button', { name: '저장' }))
+
+    expect(screen.getByText('제목은 50자까지 쓸 수 있어요')).toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('hidesGalpiSelectWithoutGalpis', () => {
+    renderForm({ withGalpis: false })
+
+    expect(screen.queryByLabelText('갈피')).not.toBeInTheDocument()
   })
 })
