@@ -41,7 +41,7 @@ class PhraseControllerTest {
 
     @Test
     void listsPhrases() throws Exception {
-        Phrase phrase = Phrase.create(GALPI_ID, "발부터 보기", List.of("수업", "영상"), T0);
+        Phrase phrase = Phrase.create(GALPI_ID, null, "발부터 보기", List.of("수업", "영상"), T0);
         given(useCase.listPhrases(GALPI_ID)).willReturn(List.of(phrase));
 
         mockMvc.perform(get("/api/galpis/" + GALPI_ID + "/phrases"))
@@ -56,8 +56,8 @@ class PhraseControllerTest {
 
     @Test
     void createsPhraseWithLocation() throws Exception {
-        Phrase phrase = Phrase.create(GALPI_ID, "문장", List.of("책"), T0);
-        given(useCase.createPhrase(GALPI_ID, "문장", List.of("책"))).willReturn(phrase);
+        Phrase phrase = Phrase.create(GALPI_ID, null, "문장", List.of("책"), T0);
+        given(useCase.createPhrase(GALPI_ID, null, "문장", List.of("책"))).willReturn(phrase);
 
         mockMvc.perform(post("/api/galpis/" + GALPI_ID + "/phrases").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"content\":\"문장\",\"sources\":[\"책\"]}"))
@@ -69,8 +69,8 @@ class PhraseControllerTest {
     @Test
     void updatesAndDeletesPhrase() throws Exception {
         UUID otherGalpi = UUID.randomUUID();
-        Phrase phrase = Phrase.create(otherGalpi, "바뀜", List.of(), T0);
-        given(useCase.updatePhrase(phrase.getId(), "바뀜", List.of(), otherGalpi)).willReturn(phrase);
+        Phrase phrase = Phrase.create(otherGalpi, null, "바뀜", List.of(), T0);
+        given(useCase.updatePhrase(phrase.getId(), null, "바뀜", List.of(), otherGalpi)).willReturn(phrase);
 
         mockMvc.perform(put("/api/phrases/" + phrase.getId()).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"content\":\"바뀜\",\"sources\":[],\"galpiId\":\"" + otherGalpi + "\"}"))
@@ -83,7 +83,7 @@ class PhraseControllerTest {
 
     @Test
     void changesFavorite() throws Exception {
-        Phrase phrase = Phrase.create(GALPI_ID, "문장", List.of(), T0);
+        Phrase phrase = Phrase.create(GALPI_ID, null, "문장", List.of(), T0);
         phrase.changeFavorite(true, T0);
         given(useCase.changeFavorite(phrase.getId(), true)).willReturn(phrase);
 

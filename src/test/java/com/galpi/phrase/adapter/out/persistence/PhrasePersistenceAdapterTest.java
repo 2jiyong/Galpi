@@ -38,7 +38,7 @@ class PhrasePersistenceAdapterTest extends PostgresIntegrationTest {
 
     @Test
     void persistsOrderedSourcesAndFavorite() {
-        Phrase phrase = Phrase.create(galpiA.getId(), "발부터 확인하기", List.of("수업", "영상"), T0);
+        Phrase phrase = Phrase.create(galpiA.getId(), null, "발부터 확인하기", List.of("수업", "영상"), T0);
         phrase.changeFavorite(true, T1);
 
         repository.save(phrase);
@@ -54,8 +54,8 @@ class PhrasePersistenceAdapterTest extends PostgresIntegrationTest {
 
     @Test
     void updateReplacesSourcesInOrder() {
-        Phrase phrase = repository.save(Phrase.create(galpiA.getId(), "문장", List.of("a", "b", "c"), T0));
-        phrase.update("문장", List.of("c"), T1);
+        Phrase phrase = repository.save(Phrase.create(galpiA.getId(), null, "문장", List.of("a", "b", "c"), T0));
+        phrase.update(null, "문장", List.of("c"), T1);
 
         repository.save(phrase);
 
@@ -66,7 +66,7 @@ class PhrasePersistenceAdapterTest extends PostgresIntegrationTest {
 
     @Test
     void moveToPersistsNewGalpi() {
-        Phrase phrase = repository.save(Phrase.create(galpiA.getId(), "문장", List.of(), T0));
+        Phrase phrase = repository.save(Phrase.create(galpiA.getId(), null, "문장", List.of(), T0));
         phrase.moveTo(galpiB.getId(), T1);
 
         repository.save(phrase);
@@ -76,7 +76,7 @@ class PhrasePersistenceAdapterTest extends PostgresIntegrationTest {
 
     @Test
     void deletingGalpiDeletesPhrasesAndSources() {
-        Phrase phrase = repository.save(Phrase.create(galpiA.getId(), "문장", List.of("수업"), T0));
+        Phrase phrase = repository.save(Phrase.create(galpiA.getId(), null, "문장", List.of("수업"), T0));
 
         jdbc.update("DELETE FROM galpis WHERE id = ?", galpiA.getId());
 
@@ -88,7 +88,7 @@ class PhrasePersistenceAdapterTest extends PostgresIntegrationTest {
 
     @Test
     void rejectsPhraseForUnknownGalpi() {
-        Phrase phrase = Phrase.create(UUID.randomUUID(), "문장", List.of(), T0);
+        Phrase phrase = Phrase.create(UUID.randomUUID(), null, "문장", List.of(), T0);
 
         assertThatThrownBy(() -> repository.save(phrase))
                 .isInstanceOf(DataIntegrityViolationException.class);
@@ -96,9 +96,9 @@ class PhrasePersistenceAdapterTest extends PostgresIntegrationTest {
 
     @Test
     void findAllByGalpiIdReturnsOnlyThatGalpisPhrasesWithSources() {
-        Phrase first = repository.save(Phrase.create(galpiA.getId(), "첫 문장", List.of("수업", "영상"), T0));
-        Phrase second = repository.save(Phrase.create(galpiA.getId(), "둘째 문장", List.of(), T1));
-        repository.save(Phrase.create(galpiB.getId(), "다른 갈피", List.of(), T0));
+        Phrase first = repository.save(Phrase.create(galpiA.getId(), null, "첫 문장", List.of("수업", "영상"), T0));
+        Phrase second = repository.save(Phrase.create(galpiA.getId(), null, "둘째 문장", List.of(), T1));
+        repository.save(Phrase.create(galpiB.getId(), null, "다른 갈피", List.of(), T0));
 
         List<Phrase> found = repository.findAllByGalpiId(galpiA.getId());
 
@@ -110,7 +110,7 @@ class PhrasePersistenceAdapterTest extends PostgresIntegrationTest {
 
     @Test
     void deleteByIdRemovesPhraseAndSources() {
-        Phrase phrase = repository.save(Phrase.create(galpiA.getId(), "문장", List.of("수업"), T0));
+        Phrase phrase = repository.save(Phrase.create(galpiA.getId(), null, "문장", List.of("수업"), T0));
 
         assertThat(repository.deleteById(phrase.getId())).isTrue();
 
@@ -118,5 +118,14 @@ class PhrasePersistenceAdapterTest extends PostgresIntegrationTest {
         assertThat(jdbc.queryForObject("SELECT count(*) FROM phrase_sources WHERE phrase_id = ?", Long.class,
                 phrase.getId())).isZero();
         assertThat(repository.deleteById(UUID.randomUUID())).isFalse();
+    }
+
+    @Test
+    void persistsTitleAndNullTitle() {
+        Phrase titled = repository.save(Phrase.create(galpiA.getId(), "다리로 밀기", "문장", List.of(), T0));
+        Phrase untitled = repository.save(Phrase.create(galpiA.getId(), null, "문장", List.of(), T0));
+
+        assertThat(repository.findById(titled.getId()).orElseThrow().getTitle()).isEqualTo("다리로 밀기");
+        assertThat(repository.findById(untitled.getId()).orElseThrow().getTitle()).isNull();
     }
 }

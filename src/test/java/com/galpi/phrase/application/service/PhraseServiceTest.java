@@ -29,7 +29,7 @@ class PhraseServiceTest {
     private final Galpi study = galpis.save(Galpi.create("공부", null, T0));
 
     private Phrase existing(String content, Instant createdAt, boolean favorite) {
-        Phrase phrase = Phrase.restore(UUID.randomUUID(), climbing.getId(), content, List.of(), favorite,
+        Phrase phrase = Phrase.restore(UUID.randomUUID(), climbing.getId(), null, content, List.of(), favorite,
                 createdAt, createdAt);
         return phrases.save(phrase);
     }
@@ -39,7 +39,7 @@ class PhraseServiceTest {
         existing("오래된", T0, false);
         existing("최신", T0.plusSeconds(20), false);
         existing("즐겨찾기", T0.plusSeconds(10), true);
-        phrases.save(Phrase.create(study.getId(), "다른 갈피", List.of(), T0));
+        phrases.save(Phrase.create(study.getId(), null, "다른 갈피", List.of(), T0));
 
         assertThat(service.listPhrases(climbing.getId())).extracting(Phrase::getContent)
                 .containsExactly("즐겨찾기", "오래된", "최신");
@@ -58,7 +58,7 @@ class PhraseServiceTest {
 
     @Test
     void createSavesWithClock() {
-        Phrase created = service.createPhrase(climbing.getId(), "  발부터 보기 ", List.of("수업"));
+        Phrase created = service.createPhrase(climbing.getId(), null, "  발부터 보기 ", List.of("수업"));
 
         assertThat(created.getContent()).isEqualTo("발부터 보기");
         assertThat(created.getCreatedAt()).isEqualTo(T1);
@@ -67,7 +67,7 @@ class PhraseServiceTest {
 
     @Test
     void createThrowsWhenGalpiMissing() {
-        assertThatThrownBy(() -> service.createPhrase(UUID.randomUUID(), "문장", List.of()))
+        assertThatThrownBy(() -> service.createPhrase(UUID.randomUUID(), null, "문장", List.of()))
                 .isInstanceOf(GalpiNotFoundException.class);
     }
 
@@ -75,7 +75,7 @@ class PhraseServiceTest {
     void updateChangesContentAndMoves() {
         Phrase phrase = existing("원래", T0, false);
 
-        Phrase updated = service.updatePhrase(phrase.getId(), "바뀜", List.of("책"), study.getId());
+        Phrase updated = service.updatePhrase(phrase.getId(), null, "바뀜", List.of("책"), study.getId());
 
         assertThat(updated.getGalpiId()).isEqualTo(study.getId());
         Phrase stored = phrases.findById(phrase.getId()).orElseThrow();
@@ -89,7 +89,7 @@ class PhraseServiceTest {
     void updateWithoutGalpiKeepsCurrentGalpi() {
         Phrase phrase = existing("원래", T0, false);
 
-        service.updatePhrase(phrase.getId(), "바뀜", List.of(), null);
+        service.updatePhrase(phrase.getId(), null, "바뀜", List.of(), null);
 
         assertThat(phrases.findById(phrase.getId()).orElseThrow().getGalpiId()).isEqualTo(climbing.getId());
     }
@@ -98,7 +98,7 @@ class PhraseServiceTest {
     void updateToUnknownGalpiThrowsNotFound() {
         Phrase phrase = existing("원래", T0, false);
 
-        assertThatThrownBy(() -> service.updatePhrase(phrase.getId(), "바뀜", List.of(), UUID.randomUUID()))
+        assertThatThrownBy(() -> service.updatePhrase(phrase.getId(), null, "바뀜", List.of(), UUID.randomUUID()))
                 .isInstanceOf(GalpiNotFoundException.class);
         Phrase stored = phrases.findById(phrase.getId()).orElseThrow();
         assertThat(stored.getContent()).isEqualTo("원래");
@@ -107,7 +107,7 @@ class PhraseServiceTest {
 
     @Test
     void updateThrowsWhenPhraseMissing() {
-        assertThatThrownBy(() -> service.updatePhrase(UUID.randomUUID(), "문장", List.of(), null))
+        assertThatThrownBy(() -> service.updatePhrase(UUID.randomUUID(), null, "문장", List.of(), null))
                 .isInstanceOf(PhraseNotFoundException.class);
     }
 
@@ -140,5 +140,15 @@ class PhraseServiceTest {
     void changeFavoriteThrowsWhenMissing() {
         assertThatThrownBy(() -> service.changeFavorite(UUID.randomUUID(), true))
                 .isInstanceOf(PhraseNotFoundException.class);
+    }
+
+    @Test
+    void createAndUpdateKeepTitle() {
+        Phrase created = service.createPhrase(climbing.getId(), " 제목 ", "문장", List.of());
+        assertThat(created.getTitle()).isEqualTo("제목");
+
+        service.updatePhrase(created.getId(), "새 제목", "문장", List.of(), null);
+
+        assertThat(phrases.findById(created.getId()).orElseThrow().getTitle()).isEqualTo("새 제목");
     }
 }

@@ -39,7 +39,7 @@ public class PhraseController {
     @Operation(summary = "문장 추가")
     @PostMapping("/galpis/{galpiId}/phrases")
     public ResponseEntity<PhraseResponse> create(@PathVariable UUID galpiId, @RequestBody PhraseRequest request) {
-        Phrase created = useCase.createPhrase(galpiId, request.content(), request.sources());
+        Phrase created = useCase.createPhrase(galpiId, request.title(), request.content(), request.sources());
         URI location = ServletUriComponentsBuilder.fromCurrentContextPath()
                 .path("/api/phrases/{id}")
                 .buildAndExpand(created.getId())
@@ -50,7 +50,7 @@ public class PhraseController {
     @Operation(summary = "문장 수정 (galpiId가 다르면 그 갈피로 이동)")
     @PutMapping("/phrases/{id}")
     public PhraseResponse update(@PathVariable UUID id, @RequestBody PhraseRequest request) {
-        return PhraseResponse.from(useCase.updatePhrase(id, request.content(), request.sources(), request.galpiId()));
+        return PhraseResponse.from(useCase.updatePhrase(id, request.title(), request.content(), request.sources(), request.galpiId()));
     }
 
     @Operation(summary = "문장 삭제")

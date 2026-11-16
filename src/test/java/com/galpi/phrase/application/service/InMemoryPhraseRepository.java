@@ -38,7 +38,7 @@ class InMemoryPhraseRepository implements PhraseRepository {
     }
 
     private static Phrase copy(Phrase phrase) {
-        return Phrase.restore(phrase.getId(), phrase.getGalpiId(), phrase.getContent(), phrase.getSources(),
+        return Phrase.restore(phrase.getId(), phrase.getGalpiId(), phrase.getTitle(), phrase.getContent(), phrase.getSources(),
                 phrase.isFavorite(), phrase.getCreatedAt(), phrase.getUpdatedAt());
     }
 }

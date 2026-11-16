@@ -15,7 +15,7 @@ class PhraseOrderTest {
     private static final UUID GALPI_ID = UUID.randomUUID();
 
     private static Phrase phrase(String content, Instant createdAt, boolean favorite) {
-        return Phrase.restore(UUID.randomUUID(), GALPI_ID, content, List.of(), favorite, createdAt, createdAt);
+        return Phrase.restore(UUID.randomUUID(), GALPI_ID, null, content, List.of(), favorite, createdAt, createdAt);
     }
 
     private final Phrase oldPlain = phrase("오래된 일반", T0, false);
@@ -41,9 +41,9 @@ class PhraseOrderTest {
 
     @Test
     void sameCreatedAtFallsBackToId() {
-        Phrase a = Phrase.restore(UUID.fromString("00000000-0000-0000-0000-000000000001"), GALPI_ID, "a",
+        Phrase a = Phrase.restore(UUID.fromString("00000000-0000-0000-0000-000000000001"), GALPI_ID, null, "a",
                 List.of(), false, T0, T0);
-        Phrase b = Phrase.restore(UUID.fromString("00000000-0000-0000-0000-000000000002"), GALPI_ID, "b",
+        Phrase b = Phrase.restore(UUID.fromString("00000000-0000-0000-0000-000000000002"), GALPI_ID, null, "b",
                 List.of(), false, T0, T0);
 
         assertThat(sorted(PhraseSort.OLDEST, b, a)).containsExactly("a", "b");

@@ -72,6 +72,20 @@ class PhraseApiIntegrationTest extends PostgresIntegrationTest {
     }
 
     @Test
+    void titleRoundTripsAndBlankBecomesNull() throws Exception {
+        String climbing = createGalpi("클라이밍");
+        String id = postJson("/api/galpis/" + climbing + "/phrases",
+                "{\"title\":\"다리로 밀기\",\"content\":\"팔보다 다리\",\"sources\":[]}");
+
+        mockMvc.perform(get("/api/galpis/" + climbing + "/phrases"))
+                .andExpect(jsonPath("$[0].title").value("다리로 밀기"));
+        mockMvc.perform(put("/api/phrases/" + id).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\" \",\"content\":\"팔보다 다리\",\"sources\":[]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").isEmpty());
+    }
+
+    @Test
     void movingToUnknownGalpiReturnsNotFound() throws Exception {
         String climbing = createGalpi("클라이밍");
         String phrase = createPhrase(climbing, "문장");
@@ -80,6 +94,8 @@ class PhraseApiIntegrationTest extends PostgresIntegrationTest {
                         .content("{\"content\":\"문장\",\"sources\":[],\"galpiId\":\"" + UUID.randomUUID() + "\"}"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.title").value("갈피를 찾을 수 없습니다"));
+        mockMvc.perform(get("/api/galpis/" + climbing + "/phrases"))
+                .andExpect(jsonPath("$[0].id").value(phrase));
     }
 
     @Test

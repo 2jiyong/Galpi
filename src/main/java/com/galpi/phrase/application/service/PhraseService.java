@@ -40,20 +40,20 @@ public class PhraseService implements PhraseUseCase {
     }
 
     @Override
-    public Phrase createPhrase(UUID galpiId, String content, List<String> sources) {
+    public Phrase createPhrase(UUID galpiId, String title, String content, List<String> sources) {
         loadGalpi(galpiId);
-        return phrases.save(Phrase.create(galpiId, content, sources, now()));
+        return phrases.save(Phrase.create(galpiId, title, content, sources, now()));
     }
 
     @Override
-    public Phrase updatePhrase(UUID id, String content, List<String> sources, UUID galpiId) {
+    public Phrase updatePhrase(UUID id, String title, String content, List<String> sources, UUID galpiId) {
         Phrase phrase = load(id);
         boolean moving = galpiId != null && !galpiId.equals(phrase.getGalpiId());
         if (moving) {
             loadGalpi(galpiId);
         }
         Instant now = now();
-        phrase.update(content, sources, now);
+        phrase.update(title, content, sources, now);
         if (moving) {
             phrase.moveTo(galpiId, now);
         }
