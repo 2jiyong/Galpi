@@ -5,24 +5,15 @@ import {
   changePhraseSort,
   deleteGalpi,
   getGalpi,
-  listGalpis,
   markGalpiViewed,
   updateGalpi,
   type Galpi,
   type GalpiInput,
   type PhraseSort,
 } from '../api/galpis'
-import {
-  createPhrase,
-  deletePhrase,
-  listPhrases,
-  setPhraseFavorite,
-  updatePhrase,
-  type Phrase,
-  type PhraseInput,
-} from '../api/phrases'
+import { createPhrase, listPhrases, setPhraseFavorite, type Phrase, type PhraseInput } from '../api/phrases'
 import GalpiForm from '../components/GalpiForm'
-import PhraseForm, { type GalpiOption } from '../components/PhraseForm'
+import PhraseForm from '../components/PhraseForm'
 import PhraseList from '../components/PhraseList'
 import Sheet from '../components/Sheet'
 
@@ -33,8 +24,6 @@ type LoadState =
   | { status: 'loaded'; galpi: Galpi }
 
 type PhrasesState = { status: 'loading' } | { status: 'failed' } | { status: 'loaded'; phrases: Phrase[] }
-
-type PhraseSheet = { mode: 'create' } | { mode: 'edit'; phrase: Phrase }
 
 const RETRY_LATER = '잠시 후 다시 시도해 주세요'
 
@@ -52,9 +41,8 @@ function GalpiDetailPage() {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
-  const [phraseSheet, setPhraseSheet] = useState<PhraseSheet | null>(null)
+  const [adding, setAdding] = useState(false)
   const [phraseSaving, setPhraseSaving] = useState(false)
-  const [galpiOptions, setGalpiOptions] = useState<GalpiOption[]>([])
   const [favoritePending, setFavoritePending] = useState<ReadonlySet<string>>(new Set())
 
   const loadPhrases = useCallback(async () => {
@@ -107,7 +95,7 @@ function GalpiDetailPage() {
 
   const { galpi } = state
 
-  // After adding, moving or deleting a phrase both the count and the sorted list change.
+  // After adding a phrase both the count and the sorted list change.
   async function refresh() {
     try {
       setState({ status: 'loaded', galpi: await getGalpi(galpi.id) })
@@ -183,44 +171,21 @@ function GalpiDetailPage() {
     }
   }
 
-  function openPhraseSheet(sheet: PhraseSheet) {
-    setGalpiOptions([{ id: galpi.id, title: galpi.title }])
-    setPhraseSheet(sheet)
-    listGalpis()
-      .then((galpis) => setGalpiOptions(galpis.map(({ id, title }) => ({ id, title }))))
-      .catch(() => {})
-  }
-
-  function closePhraseSheet() {
+  function closeAddSheet() {
     if (!phraseSaving) {
-      setPhraseSheet(null)
+      setAdding(false)
     }
   }
 
-  async function savePhrase(action: () => Promise<unknown>) {
+  async function handleAddPhrase(input: PhraseInput) {
     setPhraseSaving(true)
     try {
-      await action()
+      await createPhrase(input)
     } finally {
       setPhraseSaving(false)
     }
-    setPhraseSheet(null)
+    setAdding(false)
     await refresh()
-  }
-
-  function handlePhraseSubmit(input: PhraseInput) {
-    if (phraseSheet?.mode === 'edit') {
-      const { id } = phraseSheet.phrase
-      return savePhrase(() => updatePhrase(id, input))
-    }
-    return savePhrase(() => createPhrase(input))
-  }
-
-  async function handlePhraseDelete(phrase: Phrase) {
-    if (!window.confirm('이 문장을 삭제할까요?')) {
-      return
-    }
-    await savePhrase(() => deletePhrase(phrase.id))
   }
 
   return (
@@ -253,19 +218,6 @@ function GalpiDetailPage() {
       </header>
 
       {actionError && <p className="text-sm text-rose-700">{actionError}</p>}
-
-      <section className="flex flex-col gap-2">
-        <button
-          type="button"
-          className="rounded-2xl bg-moss px-5 py-4 text-base font-semibold text-white disabled:bg-ink/15 disabled:text-ink/45"
-          disabled={galpi.phraseCount === 0}
-        >
-          집중해서 보기
-        </button>
-        {galpi.phraseCount === 0 && (
-          <p className="text-center text-sm text-ink/55">문장을 먼저 추가해 보세요</p>
-        )}
-      </section>
 
       <section className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
@@ -304,17 +256,17 @@ function GalpiDetailPage() {
             <p className="py-4 text-center text-ink/55">아직 문장이 없어요</p>
           ) : (
             <PhraseList
+              galpiId={galpi.id}
               phrases={phrasesState.phrases}
               pendingIds={favoritePending}
               onToggleFavorite={(phrase) => void handleToggleFavorite(phrase)}
-              onEdit={(phrase) => openPhraseSheet({ mode: 'edit', phrase })}
             />
           ))}
 
         <button
           type="button"
           className="rounded-2xl border border-dashed border-ink/25 px-5 py-3 text-sm font-semibold text-ink/70"
-          onClick={() => openPhraseSheet({ mode: 'create' })}
+          onClick={() => setAdding(true)}
         >
           + 문장 추가
         </button>
@@ -331,28 +283,13 @@ function GalpiDetailPage() {
         </Sheet>
       )}
 
-      {phraseSheet && (
-        <Sheet label={phraseSheet.mode === 'edit' ? '문장 편집' : '문장 추가'} onClose={closePhraseSheet}>
+      {adding && (
+        <Sheet label="문장 추가" onClose={closeAddSheet}>
           <PhraseForm
-            initial={
-              phraseSheet.mode === 'edit'
-                ? {
-                    title: phraseSheet.phrase.title ?? '',
-                    content: phraseSheet.phrase.content,
-                    sources: phraseSheet.phrase.sources,
-                    galpiId: phraseSheet.phrase.galpiId,
-                  }
-                : { title: '', content: '', sources: [], galpiId: galpi.id }
-            }
-            galpis={galpiOptions}
+            initial={{ title: '', content: '', sources: [], galpiId: galpi.id }}
             submitLabel="저장"
-            onSubmit={handlePhraseSubmit}
-            onCancel={closePhraseSheet}
-            onDelete={
-              phraseSheet.mode === 'edit'
-                ? () => handlePhraseDelete(phraseSheet.phrase)
-                : undefined
-            }
+            onSubmit={handleAddPhrase}
+            onCancel={closeAddSheet}
           />
         </Sheet>
       )}

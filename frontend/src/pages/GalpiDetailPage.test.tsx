@@ -61,7 +61,7 @@ async function phraseItems() {
 }
 
 async function contents() {
-  return (await phraseItems()).map((item) => within(item).getByTestId('phrase-content').textContent)
+  return (await phraseItems()).map((item) => within(item).getByRole('link').textContent)
 }
 
 function calls(fetchMock: ReturnType<typeof mockFetch>, method: string, url: string) {
@@ -87,13 +87,6 @@ describe('GalpiDetailPage', () => {
     })
 
     expect(await screen.findByRole('heading', { name: '클라이밍' })).toBeInTheDocument()
-  })
-
-  it('disablesFocusWhenNoPhrases', async () => {
-    renderDetail({ 'GET /api/galpis/g1': () => jsonResponse({ ...base, phraseCount: 0 }) })
-
-    expect(await screen.findByRole('button', { name: '집중해서 보기' })).toBeDisabled()
-    expect(screen.getByText('문장을 먼저 추가해 보세요')).toBeInTheDocument()
   })
 
   it('editsGalpi', async () => {
@@ -159,21 +152,24 @@ describe('GalpiDetailPage', () => {
     expect(screen.getByRole('link', { name: '홈으로' })).toHaveAttribute('href', '/')
   })
 
-  it('listsPhrasesInServerOrder', async () => {
+  it('listsPhraseTitlesLinkingToDetail', async () => {
     renderDetail({
       'GET /api/galpis/g1': () => jsonResponse({ ...base, phraseCount: 2 }),
       'GET /api/galpis/g1/phrases': () =>
         jsonResponse([
-          phrase({ id: 'p2', content: '다리로 밀기', favorite: true, sources: ['수업', '영상'] }),
-          phrase({ id: 'p1', content: '발부터 보기' }),
+          phrase({ id: 'p2', title: '다리로 밀기', content: '팔보다 다리', favorite: true, sources: ['수업'] }),
+          phrase({ id: 'p1', title: null, content: '발부터 보기\n둘째 줄' }),
         ]),
     })
 
     expect(await contents()).toEqual(['다리로 밀기', '발부터 보기'])
     const [first, second] = await phraseItems()
+    expect(within(first).getByRole('link')).toHaveAttribute('href', '/galpis/g1/phrases/p2')
     expect(within(first).getByRole('button', { name: '즐겨찾기' })).toHaveAttribute('aria-pressed', 'true')
     expect(within(second).getByRole('button', { name: '즐겨찾기' })).toHaveAttribute('aria-pressed', 'false')
-    expect(within(first).getByText('수업 · 영상')).toBeInTheDocument()
+    expect(screen.queryByText('팔보다 다리')).not.toBeInTheDocument()
+    expect(screen.queryByText('수업')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '집중해서 보기' })).not.toBeInTheDocument()
     expect(screen.getByText('문장 2개')).toBeInTheDocument()
   })
 
@@ -230,7 +226,7 @@ describe('GalpiDetailPage', () => {
     })
   })
 
-  it('addsPhraseAndReloads', async () => {
+  it('addsPhraseToThisGalpiAndReloads', async () => {
     const fetchMock = renderDetail({
       'GET /api/galpis/g1': sequence(
         () => jsonResponse({ ...base, phraseCount: 0 }),
@@ -238,102 +234,33 @@ describe('GalpiDetailPage', () => {
       ),
       'GET /api/galpis/g1/phrases': sequence(
         () => jsonResponse([]),
-        () => jsonResponse([phrase({ id: 'new', content: '새 문장' })]),
+        () => jsonResponse([phrase({ id: 'new', title: '새 제목', content: '새 문장' })]),
       ),
-      'GET /api/galpis': () => jsonResponse([base, { ...base, id: 'g2', title: '공부' }]),
       'POST /api/galpis/g1/phrases': () => jsonResponse(phrase({ id: 'new', content: '새 문장' }), 201),
     })
 
     expect(await screen.findByText('아직 문장이 없어요')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: '+ 문장 추가' }))
     const dialog = screen.getByRole('dialog', { name: '문장 추가' })
+    expect(within(dialog).queryByLabelText('갈피')).not.toBeInTheDocument()
+    await userEvent.type(within(dialog).getByLabelText('제목 (선택)'), '새 제목')
     await userEvent.type(within(dialog).getByLabelText('내용'), '새 문장')
     await userEvent.click(within(dialog).getByRole('button', { name: '저장' }))
 
-    expect(await contents()).toEqual(['새 문장'])
+    expect(await contents()).toEqual(['새 제목'])
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '집중해서 보기' })).toBeEnabled()
+    expect(screen.getByText('문장 1개')).toBeInTheDocument()
     expect(JSON.parse(calls(fetchMock, 'POST', '/api/galpis/g1/phrases')[0][1]!.body as string)).toEqual({
-      title: '',
+      title: '새 제목',
       content: '새 문장',
       sources: [],
     })
-  })
-
-  it('movingPhraseRemovesItFromList', async () => {
-    const fetchMock = renderDetail({
-      'GET /api/galpis/g1': sequence(
-        () => jsonResponse({ ...base, phraseCount: 1 }),
-        () => jsonResponse({ ...base, phraseCount: 0 }),
-      ),
-      'GET /api/galpis/g1/phrases': sequence(
-        () => jsonResponse([phrase({ id: 'p1', content: '옮길 문장', sources: ['책'] })]),
-        () => jsonResponse([]),
-      ),
-      'GET /api/galpis': () => jsonResponse([base, { ...base, id: 'g2', title: '공부' }]),
-      'PUT /api/phrases/p1': () => jsonResponse(phrase({ id: 'p1', galpiId: 'g2', content: '옮길 문장' })),
-    })
-
-    const [item] = await phraseItems()
-    await userEvent.click(within(item).getByRole('button', { name: '문장 편집' }))
-    const dialog = screen.getByRole('dialog', { name: '문장 편집' })
-    expect(within(dialog).getByLabelText('내용')).toHaveValue('옮길 문장')
-    expect(within(dialog).getByLabelText('출처 1')).toHaveValue('책')
-    await within(dialog).findByRole('option', { name: '공부' })
-    await userEvent.selectOptions(within(dialog).getByLabelText('갈피'), 'g2')
-    await userEvent.click(within(dialog).getByRole('button', { name: '저장' }))
-
-    expect(await screen.findByText('아직 문장이 없어요')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '집중해서 보기' })).toBeDisabled()
-    expect(JSON.parse(calls(fetchMock, 'PUT', '/api/phrases/p1')[0][1]!.body as string)).toEqual({
-      title: '',
-      content: '옮길 문장',
-      sources: ['책'],
-      galpiId: 'g2',
-    })
-  })
-
-  it('deletesPhraseAfterConfirm', async () => {
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
-    const fetchMock = renderDetail({
-      'GET /api/galpis/g1': () => jsonResponse(base),
-      'GET /api/galpis/g1/phrases': sequence(
-        () => jsonResponse([phrase({ id: 'p1', content: '지울 문장' })]),
-        () => jsonResponse([]),
-      ),
-      'GET /api/galpis': () => jsonResponse([base]),
-      'DELETE /api/phrases/p1': noContent,
-    })
-
-    const [item] = await phraseItems()
-    await userEvent.click(within(item).getByRole('button', { name: '문장 편집' }))
-    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: '삭제' }))
-
-    expect(confirm).toHaveBeenCalledWith('이 문장을 삭제할까요?')
-    expect(await screen.findByText('아직 문장이 없어요')).toBeInTheDocument()
-    expect(calls(fetchMock, 'DELETE', '/api/phrases/p1')).toHaveLength(1)
-  })
-
-  it('keepsPhraseWhenDeleteCancelled', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(false)
-    const fetchMock = renderDetail({
-      'GET /api/galpis/g1': () => jsonResponse(base),
-      'GET /api/galpis/g1/phrases': () => jsonResponse([phrase({ id: 'p1' })]),
-      'GET /api/galpis': () => jsonResponse([base]),
-    })
-
-    const [item] = await phraseItems()
-    await userEvent.click(within(item).getByRole('button', { name: '문장 편집' }))
-    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: '삭제' }))
-
-    expect(calls(fetchMock, 'DELETE', '/api/phrases/p1')).toHaveLength(0)
-    expect(screen.getByRole('dialog', { name: '문장 편집' })).toBeInTheDocument()
+    expect(calls(fetchMock, 'GET', '/api/galpis')).toHaveLength(0)
   })
 
   it('keepsPhraseSheetOpenWhileSaving', async () => {
-    renderDetail({
+    const fetchMock = renderDetail({
       'GET /api/galpis/g1': () => jsonResponse(base),
-      'GET /api/galpis': () => jsonResponse([base]),
       'POST /api/galpis/g1/phrases': () => new Promise<Response>(() => {}),
     })
 
@@ -342,20 +269,10 @@ describe('GalpiDetailPage', () => {
     await userEvent.type(within(dialog).getByLabelText('내용'), '문장')
     await userEvent.click(within(dialog).getByRole('button', { name: '저장' }))
     await userEvent.click(screen.getByRole('button', { name: '닫기' }))
+    await userEvent.click(within(dialog).getByRole('button', { name: '저장' }))
 
     expect(screen.getByRole('dialog', { name: '문장 추가' })).toBeInTheDocument()
-  })
-
-  it('offersCurrentGalpiWhenGalpiListFails', async () => {
-    renderDetail({
-      'GET /api/galpis/g1': () => jsonResponse(base),
-      'GET /api/galpis': () => jsonResponse({ status: 500 }, 500),
-    })
-
-    await userEvent.click(await screen.findByRole('button', { name: '+ 문장 추가' }))
-
-    const select = within(screen.getByRole('dialog')).getByLabelText('갈피')
-    expect(within(select).getAllByRole('option').map((option) => option.textContent)).toEqual(['클라이밍'])
+    expect(calls(fetchMock, 'POST', '/api/galpis/g1/phrases')).toHaveLength(1)
   })
 
   it('showsRetryWhenPhrasesFail', async () => {
