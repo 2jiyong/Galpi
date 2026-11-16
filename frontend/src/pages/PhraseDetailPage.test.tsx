@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Galpi } from '../api/galpis'
 import type { Phrase } from '../api/phrases'
@@ -39,7 +39,15 @@ const phrases = [
 const noContent = () => new Response(null, { status: 204 })
 
 function Location() {
-  return <p data-testid="location">{useLocation().pathname}</p>
+  const navigate = useNavigate()
+  return (
+    <>
+      <p data-testid="location">{useLocation().pathname}</p>
+      <button type="button" onClick={() => navigate(-1)}>
+        브라우저 뒤로
+      </button>
+    </>
+  )
 }
 
 function renderDetail(phraseId: string, handlers: Record<string, FetchHandler> = {}) {
@@ -50,7 +58,7 @@ function renderDetail(phraseId: string, handlers: Record<string, FetchHandler> =
     ...handlers,
   })
   render(
-    <MemoryRouter initialEntries={[`/galpis/g1/phrases/${phraseId}`]}>
+    <MemoryRouter initialEntries={['/galpis/g1', `/galpis/g1/phrases/${phraseId}`]} initialIndex={1}>
       <Routes>
         <Route path="/galpis/:galpiId" element={<p>갈피 화면</p>} />
         <Route path="/galpis/:galpiId/phrases/:phraseId" element={<PhraseDetailPage />} />
@@ -213,5 +221,59 @@ describe('PhraseDetailPage', () => {
 
     expect(await screen.findByText('문장을 찾을 수 없어요')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: '갈피로 돌아가기' })).toHaveAttribute('href', '/galpis/g1')
+  })
+
+  it('editAfterFavoriteKeepsPositionAndOrder', async () => {
+    const fetchMock = renderDetail('c', {
+      'GET /api/galpis': () => jsonResponse([galpi]),
+      'PUT /api/phrases/c/favorite': () => jsonResponse(phrase({ id: 'c', content: '쉬면서 하기', favorite: true })),
+      'PUT /api/phrases/c': () =>
+        jsonResponse(phrase({ id: 'c', title: '휴식', content: '쉬면서 하기', favorite: true })),
+      'GET /api/galpis/g1/phrases': (() => {
+        let count = 0
+        return () =>
+          jsonResponse(
+            count++ === 0 ? phrases : [phrase({ id: 'c', title: '휴식', content: '쉬면서 하기', favorite: true }), phrases[0], phrases[1]],
+          )
+      })(),
+    })
+
+    await userEvent.click(await screen.findByRole('button', { name: '즐겨찾기' }))
+    await userEvent.click(screen.getByRole('button', { name: '편집' }))
+    const dialog = screen.getByRole('dialog', { name: '문장 편집' })
+    await userEvent.type(within(dialog).getByLabelText('제목 (선택)'), '휴식')
+    await userEvent.click(within(dialog).getByRole('button', { name: '저장' }))
+
+    expect(await screen.findByRole('heading', { name: '휴식' })).toBeInTheDocument()
+    expect(screen.getByText('3/3')).toBeInTheDocument()
+    expect(calls(fetchMock, 'GET', '/api/galpis/g1/phrases')).toHaveLength(1)
+  })
+
+  it('backAfterDeleteDoesNotReturnToDeletedPhrase', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    renderDetail('b', { 'DELETE /api/phrases/b': noContent })
+
+    await userEvent.click(await screen.findByRole('button', { name: '삭제' }))
+    expect(await screen.findByText('갈피 화면')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: '브라우저 뒤로' }))
+
+    expect(location()).not.toBe('/galpis/g1/phrases/b')
+  })
+
+  it('backAfterMoveDoesNotReturnToMovedPhrase', async () => {
+    renderDetail('b', {
+      'GET /api/galpis': () => jsonResponse([galpi, { ...galpi, id: 'g2', title: '공부' }]),
+      'PUT /api/phrases/b': () => jsonResponse(phrase({ id: 'b', galpiId: 'g2', content: '발부터 보기' })),
+    })
+
+    await userEvent.click(await screen.findByRole('button', { name: '편집' }))
+    const dialog = screen.getByRole('dialog', { name: '문장 편집' })
+    await within(dialog).findByRole('option', { name: '공부' })
+    await userEvent.selectOptions(within(dialog).getByLabelText('갈피'), 'g2')
+    await userEvent.click(within(dialog).getByRole('button', { name: '저장' }))
+    expect(await screen.findByText('갈피 화면')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: '브라우저 뒤로' }))
+
+    expect(location()).not.toBe('/galpis/g1/phrases/b')
   })
 })

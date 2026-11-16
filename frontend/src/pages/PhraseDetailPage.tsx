@@ -158,14 +158,12 @@ function PhraseDetailPage() {
     }
     setEditing(false)
     if (updated.galpiId !== galpiId) {
-      navigate(`/galpis/${galpiId}`)
+      // Replace the entry so Back does not lead to a phrase that is no longer in this galpi.
+      navigate(`/galpis/${galpiId}`, { replace: true })
       return
     }
-    try {
-      setState({ status: 'loaded', galpi, phrases: await listPhrases(galpiId) })
-    } catch {
-      replacePhrase(updated)
-    }
+    // Edits cannot change the order, and a reload would apply favorite changes mid-viewing.
+    replacePhrase(updated)
   }
 
   async function handleDelete() {
@@ -175,7 +173,7 @@ function PhraseDetailPage() {
     setSaving(true)
     try {
       await deletePhrase(phrase.id)
-      navigate(`/galpis/${galpiId}`)
+      navigate(`/galpis/${galpiId}`, { replace: true })
     } finally {
       setSaving(false)
     }
