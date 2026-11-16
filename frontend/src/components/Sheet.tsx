@@ -15,7 +15,7 @@ function Sheet({ label, onClose, children }: SheetProps) {
         role="dialog"
         aria-modal="true"
         aria-label={label}
-        className="relative w-full max-w-md rounded-t-3xl bg-paper p-6 shadow-xl sm:rounded-3xl"
+        className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-paper p-6 shadow-xl sm:rounded-3xl"
       >
         <h2 className="mb-5 font-serif text-xl font-semibold">{label}</h2>
         {children}
