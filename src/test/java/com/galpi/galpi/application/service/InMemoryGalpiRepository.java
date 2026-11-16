@@ -12,16 +12,16 @@ import java.util.Optional;
 import java.util.UUID;
 
 /** Test double that stores galpis in memory and keeps restored copies, like a real database round trip. */
-class InMemoryGalpiRepository implements GalpiRepository {
+public class InMemoryGalpiRepository implements GalpiRepository {
 
     private final Map<UUID, Galpi> galpis = new LinkedHashMap<>();
     private final Map<UUID, Long> phraseCounts = new HashMap<>();
 
-    void setPhraseCount(UUID galpiId, long count) {
+    public void setPhraseCount(UUID galpiId, long count) {
         phraseCounts.put(galpiId, count);
     }
 
-    int size() {
+    public int size() {
         return galpis.size();
     }
 
